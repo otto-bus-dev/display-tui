@@ -12,7 +12,7 @@ Built with Rust and the `crossterm` and `ratatui` libraries, it provides a user-
 
 # Preview
 
-![Preview of Display TUI]([https://github.com/otto-bus-dev/display-tui/blob/master/assets/preview.png])
+![Preview of Display TUI](/assets/preview.png)
 
 # Requirements
 
@@ -32,11 +32,26 @@ Built with Rust and the `crossterm` and `ratatui` libraries, it provides a user-
    cargo build --release
    cp target/release/display-tui /usr/local/bin/ # or your preferred location
    ```
-2. Add reference to monitor configuration in your Hyprland config file:
+2. Create a display-tui configuration file or run display-config to generate the default one :
+   The configuration file is a json file that contains the tui settings.
+   It contains only one field `monitors_config_path` which is the path where display-tui will save the monitors configuration for hyprland.
+   the default path is `~/.config/hypr/hyprland/monitors.conf`.
+
+   ```bash
+   mkdir -p ~/.config/display-tui
+   echo '{"monitors_config_path": "~/.config/hypr/hyprland/monitors.conf"}' > ~/.config/display-tui/config.json
+   ```
+
+3. Add reference to monitor configuration in your Hyprland config file:
+   You need to add the following line to your Hyprland config file (usually located at `~/.config/hypr/hyprland.conf`):
+
    ```bash
    source ~/.config/hypr/hyprland/monitors.conf
    ```
-3. Run the TUI and Save your configuration:
+
+   Here we have the default path, if you changed the `monitors_config_path` in the configuration file, you need to change it here too.
+
+4. Run the TUI and Save your configuration:
    ```bash
    display-tui
    ```

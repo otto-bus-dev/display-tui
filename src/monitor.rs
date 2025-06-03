@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use std::process::Command;
 use std::io::Write;
+use crate::configuration::Configuration;
 use ratatui::layout::Rect;
 #[derive(Debug,Default, Clone, Deserialize)]
 pub struct Monitor {
@@ -171,13 +172,12 @@ impl Monitor {
         }
         
     }
-    pub fn save_hyprland_config(monitors: &Vec<Monitor>) -> std::io::Result<()> {
-        let config_path = "/home/otto/.config/hypr/hyprland/monitors.conf"; // Adjust this path as needed
+    pub fn save_hyprland_config(path:&String,monitors: &Vec<Monitor>) -> std::io::Result<()> {
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .truncate(true)
             .create(true)
-            .open(config_path)?;
+            .open(path)?;
         for monitor in monitors {
             let config_line = monitor.to_hyprland_config();
             writeln!(file, "{}", config_line)?;

@@ -1,13 +1,11 @@
 use std::io;
 use crossterm::event::{self,Event,KeyCode,KeyEvent,KeyEventKind};
-
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
     widgets::Widget,
     DefaultTerminal,Frame,
 };
-
 use ratatui::prelude::*;
 mod list;
 mod map;
@@ -15,13 +13,17 @@ mod monitor;
 mod resolutions;
 mod utils;
 mod scale;
+mod configuration;
 use list::MonitorList;
 use map::Map;
 use monitor::{Monitor,Position};
+
 use resolutions::Resolutions; 
 use scale::Scale;
 use utils::TUIMode;
 use utils::ScaleValue;
+use configuration::Configuration;
+
 fn main() -> io::Result<()> {
     let mut terminal = ratatui::init();
     let app_result = App::default().run(&mut terminal);
@@ -32,6 +34,7 @@ fn main() -> io::Result<()> {
 #[derive(Debug, Default)]
 struct App {
     exit:bool,
+    config: Configuration,
     monitors: Vec<Monitor>,
     selected_monitor: usize,
     selected_resolution : usize,
@@ -44,6 +47,8 @@ impl App{
         self.monitors = Monitor::get_monitors();
         self.selected_resolution= 0;
         self.selected_monitor= 0;
+        self.config = Configuration::get();
+
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
@@ -54,9 +59,6 @@ impl App{
     fn draw(&self, frame: &mut Frame){
         frame.render_widget(self,frame.area());
     }
-}
-
-impl App{
 
     fn handle_events(&mut self) -> io::Result<()> {
         match event::read()? {
@@ -134,7 +136,10 @@ impl App{
     }
     
     fn write(&mut self) {
-        Monitor::save_hyprland_config(&self.monitors).expect("Failed to save Hyprland config");
+        Monitor::save_hyprland_config(
+            &self.config.monitors_config_path,
+            &self.monitors
+        ).expect("Failed to save Hyprland config");
     }         
   
     fn change_mode(&mut self, mode: TUIMode) {
