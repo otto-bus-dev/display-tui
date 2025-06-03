@@ -12,7 +12,7 @@ Built with Rust and the `crossterm` and `ratatui` libraries, it provides a user-
 
 # Preview
 
-![Preview of Display TUI](https://raw.githubusercontent.com/otto-bus-dev/display-tui/blob/master/assets/preview.png)
+![Preview of Display TUI]([https://github.com/otto-bus-dev/display-tui/blob/master/assets/preview.png))
 
 # Requirements
 
