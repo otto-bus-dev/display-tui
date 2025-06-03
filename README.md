@@ -10,6 +10,10 @@ Built with Rust and the `crossterm` and `ratatui` libraries, it provides a user-
 - set display resolution
 - set display scale
 
+# Preview
+
+![Preview of Display TUI](https://raw.githubusercontent.com/otto-bus-dev/display-tui/blob/master/assets/preview.png)
+
 # Requirements
 
 - Hyprland
@@ -31,4 +35,8 @@ Built with Rust and the `crossterm` and `ratatui` libraries, it provides a user-
 2. Add reference to monitor configuration in your Hyprland config file:
    ```bash
    source ~/.config/hypr/hyprland/monitors.conf
+   ```
+3. Run the TUI and Save your configuration:
+   ```bash
+   display-tui
    ```
