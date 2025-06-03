@@ -6,6 +6,7 @@ use ratatui::{
     text::Line,
     widgets::{Cell,Block,StatefulWidget,Row,Table,TableState},
 };
+
 use ratatui::layout::Constraint;
 use crate::monitor::Monitor;
 use crate::utils::TUIMode;
@@ -18,9 +19,9 @@ pub struct MonitorList<'a> {
     pub monitors:&'a Vec<Monitor>,
 }
 
+
 impl<'a> MonitorList<'a> {
     pub fn new(monitors: &'a Vec<Monitor>,mode:TUIMode,selected_row:Option<usize>) -> Self {
-
         MonitorList{
             mode,
             selected_row,
@@ -32,14 +33,14 @@ impl<'a> MonitorList<'a> {
 
     fn monitors_to_rows(&self) -> Vec<Row<'static>> {
         self.monitors
-            .into_iter()
+            .iter()
             .map(|monitor| {
                 let name = monitor.name.clone();
                 let description = monitor.description.clone().unwrap_or_else(|| "No description".to_string());
                 let scale = monitor.scale.unwrap_or(1.0).to_string();
                 let enabled = monitor.enabled.to_string();
                 
-                let position = match monitor.position.clone() {
+                let position = match monitor.position.as_ref() {
                     Some(pos) => format!("({},{})", pos.x, pos.y),
                     None => "N/A".to_string(),
                 };
@@ -53,96 +54,98 @@ impl<'a> MonitorList<'a> {
                     None => "N/A".to_string(),
                 };
                 Row::new(vec![
-                Cell::from(
-name),
-                Cell::from(
-description),
-                Cell::from(
-                if enabled == "true" {
-                    "".green().to_string()
-                } else {
-                    "".red().to_string()
-                })
-                    .style(
-                        Style::default().fg(
-                            if enabled == "true" {Color::Green} else {Color::Red}
+                    Cell::default().content(
+                        Line::from(
+                            if enabled == "true" {
+                                "".green().to_string()
+                            } else {
+                                "".red().to_string()
+                            }
                         )
+                        .centered()
+                        .style(
+                            Style::default().fg(
+                                if enabled == "true" {Color::Green} else {Color::Red}
+                            )
+                        ),
                     ),
-                Cell::from(
-resolution), 
-                Cell::from(
-position),
-                Cell::from(
-scale),
-            ])
+                    Cell::from(name),
+                    Cell::from(description),
+                    Cell::from(resolution), 
+                    Cell::from(position),
+                    Cell::from(scale),
+                ])
             }
             )
             .collect()
     }
+    
     pub fn render(&mut self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" Properties ".white().bold());
+        let title = Line::from(if self.monitors.len()>1 {" Displays "}else{" Display "}.white().bold());
         let mut instructions_items = vec![];
 
         match self.mode {
             TUIMode::View => {
                 let selected_monitor = &self.monitors[self.selected_row.unwrap_or(0)];
-                instructions_items.push(" Up ".white().into());
+                instructions_items.push(" Up ".white());
                 instructions_items.push("<k> ".blue().bold());
-                instructions_items.push(" Down ".white().into());
+                instructions_items.push(" Down ".white());
                 instructions_items.push("<j> ".blue().bold());
-                instructions_items.push(" Move ".white().into());
+                instructions_items.push(" Move ".white());
                 instructions_items.push("<m> ".blue().bold());
-                instructions_items.push(" Resolution ".white().into());
+                instructions_items.push(" Resolution ".white());
                 instructions_items.push("<r> ".blue().bold());
-                instructions_items.push(" Scale ".white().into());
+                instructions_items.push(" Scale ".white());
                 instructions_items.push("<s> ".blue().bold());
                 if selected_monitor.enabled {
-                    instructions_items.push(" Disable ".white().into());
+                    instructions_items.push(" Disable ".white());
                     instructions_items.push("<d> ".blue().bold());
                 } else {
-                    instructions_items.push(" Enable ".white().into());
+                    instructions_items.push(" Enable ".white());
                     instructions_items.push("<e> ".blue().bold());
                 }
             },
+
             TUIMode::Resolution=> {
-                instructions_items.push(" Up ".white().into());
+                instructions_items.push(" Up ".white());
                 instructions_items.push("<k> ".blue().bold());
-                instructions_items.push(" Down ".white().into());
+                instructions_items.push(" Down ".white());
                 instructions_items.push("<j> ".blue().bold());
-                instructions_items.push(" Select ".white().into());
+                instructions_items.push(" Select ".white());
                 instructions_items.push("<Space> ".blue().bold());
-                instructions_items.push(" Quit Resolution Mode ".white().into());
+                instructions_items.push(" Quit Resolution Mode ".white());
                 instructions_items.push("<Esc> ".blue().bold());
             },
+
             TUIMode::Move => {
-                instructions_items.push(" Fast ".white().into());
+                instructions_items.push(" Fast ".white());
                 instructions_items.push("<MAJ>+<*> ".blue().bold());
-                instructions_items.push(" Up ".white().into());
+                instructions_items.push(" Up ".white());
                 instructions_items.push("<k> ".blue().bold());
-                instructions_items.push(" Down ".white().into());
+                instructions_items.push(" Down ".white());
                 instructions_items.push("<j> ".blue().bold());
-                instructions_items.push(" Left ".white().into());
+                instructions_items.push(" Left ".white());
                 instructions_items.push("<h> ".blue().bold());
-                instructions_items.push(" Right ".white().into());
+                instructions_items.push(" Right ".white());
                 instructions_items.push("<l> ".blue().bold());
-                instructions_items.push(" Quit Move Mode ".white().into());
+                instructions_items.push(" Quit Move Mode ".white());
                 instructions_items.push("<Esc> ".blue().bold());
             },
             TUIMode::Scale => {
-                instructions_items.push(" Up ".white().into());
+                instructions_items.push(" Up ".white());
                 instructions_items.push("<k> ".blue().bold());
-                instructions_items.push(" Down ".white().into());
+                instructions_items.push(" Down ".white());
                 instructions_items.push("<j> ".blue().bold());
-                instructions_items.push(" Select ".white().into());
+                instructions_items.push(" Select ".white());
                 instructions_items.push("<Space> ".blue().bold());
-                instructions_items.push(" Quit Scale Mode ".white().into());
+                instructions_items.push(" Quit Scale Mode ".white());
                 instructions_items.push("<Esc> ".blue().bold());
             },
         }
 
-        instructions_items.push(" Save ".white().into());
+        instructions_items.push(" Save ".white());
         instructions_items.push("<w> ".blue().bold());
-        instructions_items.push(" Quit ".white().into());
+        instructions_items.push(" Quit ".white());
         instructions_items.push("<q> ".blue().bold());
 
         let instructions = Line::from(instructions_items);
@@ -156,24 +159,35 @@ scale),
 
         let widths = [
             
-            Constraint::Percentage(20),
-            Constraint::Percentage(30),
-            Constraint::Percentage(10),
+            Constraint::Percentage(5),
             Constraint::Percentage(15),
+            Constraint::Percentage(40),
+            Constraint::Percentage(20),
             Constraint::Percentage(15),
             Constraint::Percentage(10),
         ];   
+
         let table = Table::new(self.monitors_to_rows(),widths) 
             .column_spacing(1)
-            //.style(Style::new().blue())
             .header(
-                Row::new(vec!["name","description", "connected", "resolution", "position","scale"])
-                    .style(Style::new().bold())
-                    .bottom_margin(1),
+                Row::new(vec![
+                    Cell::default().content(
+                        Line::from("  ")
+                        .centered()
+                    ),
+                    Cell::from("name"),
+                    Cell::from("description"),
+                    Cell::from("resolution"),
+                    Cell::from("position"),
+                    Cell::from("scale")])
+                    .bottom_margin(1)
+                    .bold()
+                    .green()
+                    .reversed()
             )
             .row_highlight_style(Style::new().yellow())
             .cell_highlight_style(Style::new().blue())
-            .highlight_symbol(" ")
+            .highlight_symbol("  ")
             .block(block);
 
         StatefulWidget::render(
@@ -201,30 +215,18 @@ mod tests {
                 Monitor {
                     name: "Monitor 1".to_string(),
                     description: None,
-                    // make: None,
-                    // model: None,
-                    // serial: None,
-                    // physical_size: None,
                     enabled: true,
                     modes: vec![],
                     position: Some(Position { x: 0, y: 0 }),
-                    // transform: Some("normal".to_string()),
                     scale: Some(1.0),
-                    // adaptive_sync: Some(false),
                 },
                 Monitor {
                     name: "Monitor 2".to_string(),
                     description: None,
-                    // make: None,
-                    // model: None,
-                    // serial: None,
-                    // physical_size: None,
                     enabled: false,
                     modes: vec![],
                     position: Some(Position { x: 0, y: 0 }),
-                    // transform: Some("normal".to_string()),
                     scale: Some(1.0),
-                    // adaptive_sync: Some(false),
                 },
             ],
         }; 

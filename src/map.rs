@@ -14,7 +14,11 @@ use ratatui::{
     },
 };
 
-use crate::monitor::Monitor;
+
+use crate::monitor::{
+    Monitor
+    ,MonitorCanvas
+};
 use crate::utils::TUIMode;
 
 #[derive(Debug)]
@@ -28,31 +32,9 @@ impl<'a> Widget for Map<'a>{
 
     fn render(self, area: Rect, buf: &mut Buffer) {
 
-        let monitor_canvas = Monitor::get_monitors_canvas(&self.monitors);
+        let monitor_canvas = Monitor::get_monitors_canvas(self.monitors,&area);
 
-        let left = monitor_canvas.left as f64;
-        let bottom = monitor_canvas.bottom as f64;
-        let right = monitor_canvas.right as f64;
-        let top = monitor_canvas.top as f64;
-        
-        let area_ratio = area.width as f64 / area.height as f64;
-        let canvas_ratio = monitor_canvas.width as f64 / monitor_canvas.height as f64;
-        let canvas_area_ratio = canvas_ratio / area_ratio;
-            
-        let height = top - bottom;
-        let added_height =  height * canvas_area_ratio  / 2.0;
-        let y_bounds = [bottom - added_height, top + added_height];
-
-        let width = right- left;
-        let added_width =  width / canvas_area_ratio  / 2.0;
-        let x_bounds = [left - added_width, right + added_width];
-
-        let mut offset_y = 0.0;
-        if bottom < 0.0 {
-             offset_y = -bottom;
-        }
-        
-        let title = Line::from(" Canvas ".bold());
+        let title = Line::from(" Map ".bold());
 
         Canvas::default()
             .marker(Marker::HalfBlock)
@@ -61,24 +43,20 @@ impl<'a> Widget for Map<'a>{
                     .style(Style::default().fg(if self.mode == TUIMode::Move{Color::Yellow} else {Color::White}))
                     .title(title.white().centered())
             )
-            .x_bounds(x_bounds)
-            .y_bounds(y_bounds)
+            .x_bounds(monitor_canvas.x_bounds)
+            .y_bounds(monitor_canvas.y_bounds)
             .paint(|ctx| {
                 let mut index = 0;
                 for monitor in self.monitors {
-                    if self.selected != index {
-                        if monitor.enabled {
-                            self.render_enabled_monitor(ctx,top,offset_y, &monitor, Color::Blue);
-                        } 
+                    if self.selected != index && monitor.enabled {
+                        self.render_enabled_monitor(ctx,&monitor_canvas, monitor, Color::Blue);
                     }
                     index += 1;
                 }
                 index = 0;
                 for monitor in self.monitors {
-                    if self.selected == index {
-                        if monitor.enabled {
-                            self.render_enabled_monitor(ctx,top,offset_y,&monitor, Color::Yellow);
-                        }
+                    if self.selected == index && monitor.enabled {
+                            self.render_enabled_monitor(ctx,&monitor_canvas,monitor, Color::Yellow);
                     }
                     index += 1;
                 }
@@ -91,8 +69,7 @@ impl<'a> Map<'a> {
     pub fn render_enabled_monitor(
         &self,
         ctx: &mut ratatui::widgets::canvas::Context,
-        top: f64,
-        offset_y: f64,
+        monitor_canvas: &MonitorCanvas,
         monitor: &Monitor,
         color: Color,
     ) {
@@ -103,31 +80,16 @@ impl<'a> Map<'a> {
         let width = mode.unwrap().width as f64 / monitor.scale.unwrap() as f64;
         let x = monitor.position.clone().unwrap().x as f64;
         let height = mode.unwrap().height as f64 / monitor.scale.unwrap() as f64;
-        let y = top - offset_y - height as f64 - monitor.position.clone().unwrap().y as f64; 
-        self.render_monitor(ctx, x, y, width, height, &monitor.name, color);
-    }
-
-    pub fn render_monitor(
-        &self,
-        ctx: &mut ratatui::widgets::canvas::Context,
-        x: f64,
-        y: f64,
-        width: f64,
-        height: f64,
-        label: &str,
-        color: Color,
-    ) {
+        let y = (monitor_canvas.top - monitor_canvas.offset_y - monitor.position.clone().unwrap().y) as f64 - height ; 
 
         let x_margin = width * 0.07; 
         let y_margin = height * 0.07;
 
         ctx.print(
-            (x + x_margin) as f64, 
-            (y + height - y_margin) as f64, 
+            x + x_margin, 
+            y + height - y_margin, 
             Line::styled(
-                format!("{}",
-                    label,
-                ),
+                monitor.name.to_string(),
                 color
             )
         );

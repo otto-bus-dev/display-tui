@@ -31,33 +31,49 @@ impl<'a> Resolutions<'a> {
             .into_iter()
             .map(|mode| {
                 Row::new(vec![
-                    Cell::from(format!("{}x{}",mode.width, mode.height)),
-                    Cell::from(mode.refresh.to_string()),
-                Cell::from(
-                if mode.preferred {
-                    "".green().to_string()
-                } else {
-                    "".red().to_string()
-                })
+                    Cell::default().content(
+                        Line::from(
+                            if mode.current{
+                                "".green().to_string()
+                            } else {
+                                "".red().to_string()
+                            }
+                        )
+                        .centered()
+                    )
+                    .style(
+                        Style::default().fg(
+                            if mode.current {Color::Green} else {Color::Red}
+                        )
+                    ),
+                    Cell::default().content(
+                        Line::from(
+                            format!("{}x{}",mode.width, mode.height)
+                        )
+                        .centered()
+                    ),
+                    Cell::default().content(
+                        Line::from(
+                            mode.refresh.to_string()
+                        )
+                        .centered()
+                    ),
+                    Cell::default().content(
+                        Line::from(
+                            if mode.preferred {
+                                "".green().to_string()
+                            } else {
+                                "".red().to_string()
+                            }
+                        )
+                        .centered()
+                    )
                     .style(
                         Style::default().fg(
                             if mode.preferred {Color::Green} else {Color::Red}
-                        )
-                    ),
-                Cell::from(
-                if mode.current  {
-                    "".green().to_string()
-                } else {
-                    "".red().to_string()
-                })
-                    .style(
-                        Style::default().fg(
-                            if mode.current  {Color::Green} else {Color::Red}
-                        )
-                    ),
-                            ])
-            }
-            )
+                    )
+                )])
+            })
             .collect()
     }
 
@@ -81,16 +97,34 @@ impl<'a> Resolutions<'a> {
             .column_spacing(1)
             //.style(Style::new().blue())
             .header(
-                Row::new(vec!["resolution","refresh", "preferred", "current"])
+                Row::new(vec![
+                    Cell::from(
+                        Line::from("current")
+                            .centered()
+                    ),
+                    Cell::from(
+                        Line::from("resolution")
+                            .centered()
+                    ),
+                    Cell::from(
+                        Line::from("refresh")
+                            .centered()
+                    ), 
+                    Cell::from(
+                        Line::from("preferred")
+                            .centered()
+                    ), 
+                ])
                     .style(Style::new().bold())
-                    .bottom_margin(1),
+                    .bottom_margin(1)
+                    .bold()
+                    .green()
+                    .reversed()
             )
  
             .row_highlight_style(Style::new().yellow())
             .cell_highlight_style(Style::new().blue())
             .highlight_symbol(" ")           
-            //.row_highlight_style(Style::new().reversed())
-            //.highlight_symbol(">>")
             .block(block);
 
         StatefulWidget::render(

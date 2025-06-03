@@ -4,7 +4,7 @@ use ratatui::{
     style::{Style,Stylize,Color},
     symbols::border,
     text::Line,
-    widgets::{Block,StatefulWidget,Row,Table,TableState},
+    widgets::{Block,StatefulWidget,Row,Table,Cell,TableState},
 };
 
 use ratatui::layout::Constraint;
@@ -31,10 +31,12 @@ impl Scale{
             .into_iter()
             .map(|scale| {
                 Row::new(vec![
-                format!("{}",scale.name),
-            ])
-            }
-            )
+                    Cell::default().content(
+                        Line::from(scale.name)
+                            .centered()
+                    ),
+                ])
+            })
             .collect()
     }
 }
@@ -56,7 +58,7 @@ impl Scale{
             .column_spacing(1)
             .row_highlight_style(Style::new().yellow())
             .cell_highlight_style(Style::new().blue())
-            .highlight_symbol(" ")            
+            .highlight_symbol("  ")            
             .block(block);
 
         StatefulWidget::render(

@@ -1,27 +1,18 @@
 use serde::Deserialize;
 use std::process::Command;
 use std::io::Write;
-#[derive(Debug, Clone, Deserialize)]
+use ratatui::layout::Rect;
+#[derive(Debug,Default, Clone, Deserialize)]
 pub struct Monitor {
     pub name: String,
     pub description: Option<String>,
-    // pub make: Option<String>,
-    // pub model: Option<String>,
-    // pub serial: Option<String>,
-    // pub physical_size: Option<Size>,
     pub enabled: bool,
     pub modes: Vec<Resolution>,
     pub position: Option<Position>,
-    // pub transform: Option<String>,
     pub scale: Option<f32>,
-    // pub adaptive_sync:Option<bool>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct Size{
-    // pub width: i32,
-    // pub height: i32,
-}
+
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Position{
@@ -40,18 +31,15 @@ pub struct Resolution {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct MonitorCanvas{
-    pub left: i32,
-    pub bottom: i32,
-    pub right: i32,
     pub top: i32,
-    pub width: i32,
-    pub height: i32,
+    pub x_bounds: [f64; 2],
+    pub y_bounds: [f64; 2],
+    pub offset_y: i32,
 }
 
 
 impl Monitor {
 
-    
     pub fn get_monitors() -> Vec<Monitor> {
         let output = Command::new("wlr-randr")
             .arg("--json")
@@ -67,7 +55,7 @@ impl Monitor {
 
         new_monitors
     }
-    pub fn get_monitors_canvas(monitors: &Vec<Monitor>) -> MonitorCanvas {
+    pub fn get_monitors_canvas(monitors: &Vec<Monitor>, area: &Rect) -> MonitorCanvas {
         let mut left = 10000.0;
         let mut bottom = 10000.0;
         let mut right = -10000.0;
@@ -108,14 +96,31 @@ impl Monitor {
         bottom -= margin;
         right += margin;
         top += margin;
-        
+        let width = right - left;
+        let height = top - bottom;
+ 
+        let area_ratio = area.width as f64 / area.height as f64;
+        let canvas_ratio = width / height;
+        let canvas_area_ratio = canvas_ratio / area_ratio;
+            
+        let height = top - bottom;
+        let added_height =  height * canvas_area_ratio  / 2.0;
+        let y_bounds = [bottom - added_height, top + added_height];
+
+        let width = right- left;
+        let added_width =  width / canvas_area_ratio  / 2.0;
+        let x_bounds = [left - added_width, right + added_width];
+
+        let mut offset_y = 0.0;
+        if bottom < 0.0 {
+             offset_y = -bottom;
+        }
+       
         MonitorCanvas {
-            left: left as i32,
-            bottom: bottom as i32,
-            right: right as i32,
             top: top as i32,
-            width: (right - left) as i32,
-            height: (top - bottom) as i32,
+            x_bounds,
+            y_bounds,
+            offset_y: offset_y as i32,
         }
 
     }
@@ -131,13 +136,7 @@ impl Monitor {
             .iter()
             .find(|m| m.preferred)
     }
-    pub fn get_current_resolution_index(&self) -> usize {
-        self.modes.iter().position(|m| m.current).expect("No current mode found")
-    }
-    // pub fn get_prefered_resolution_index(&self) -> usize {
-    //     self.modes.iter().position(|m| m.preferred).expect("No current mode found")
-    // }
-
+    
     pub fn set_current_resolution(&mut self, index: usize) {
         if index < self.modes.len() {
             for mode in &mut self.modes {
@@ -187,18 +186,10 @@ impl Monitor {
     }
 
     pub fn move_vertical(&mut self, direction: i32) {
-        match self.position {
-            Some(ref mut pos) => pos.y += direction,
-            None => {
-            }
-        }
+        if let Some(ref mut pos) = self.position { pos.y += direction};
     }
 
     pub fn move_horizontal(&mut self, direction: i32) {
-        match self.position {
-            Some(ref mut pos) => pos.x += direction,
-            None => {
-            }
-        }
+        if let Some(ref mut pos) = self.position { pos.x += direction};
     }
 }

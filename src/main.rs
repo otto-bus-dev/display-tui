@@ -29,12 +29,6 @@ fn main() -> io::Result<()> {
     app_result
 }
 
-impl Default for TUIMode {
-    fn default() -> Self {
-        TUIMode::View
-    }
-}
-
 #[derive(Debug, Default)]
 struct App {
     exit:bool,
@@ -45,7 +39,7 @@ struct App {
     mode: TUIMode,
 }
 
-impl App {
+impl App{
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         self.monitors = Monitor::get_monitors();
         self.selected_resolution= 0;
@@ -60,6 +54,9 @@ impl App {
     fn draw(&self, frame: &mut Frame){
         frame.render_widget(self,frame.area());
     }
+}
+
+impl App{
 
     fn handle_events(&mut self) -> io::Result<()> {
         match event::read()? {
@@ -72,118 +69,107 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
-        match self.mode {
-            TUIMode::View => self.handle_view_mode(key_event),
-            TUIMode::Move => self.handle_move_mode(key_event),
-            TUIMode::Resolution=> self.handle_resolution_mode(key_event),
-            TUIMode::Scale => self.handle_scale_mode(key_event), 
-        }
-    }
-    
-    fn handle_view_mode(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => self.exit(),
-            KeyCode::Char('k')=> self.select_up(),
-            KeyCode::Char('j')=> self.select_down(),
+            KeyCode::Char('w') => self.write(), 
+            _ => {
+                match self.mode {
+                    TUIMode::View => self.handle_view_mode(key_event),
+                    TUIMode::Move => self.handle_move_mode(key_event),
+                    TUIMode::Resolution=> self.handle_resolution_mode(key_event),
+                    TUIMode::Scale => self.handle_scale_mode(key_event), 
+                }
+            }
+        }
+    }
+    fn handle_view_mode(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('k')=> self.previous_monitor(),
+            KeyCode::Char('j')=> self.next_monitor(),
             KeyCode::Char('e')=> self.enable_monitor(),
             KeyCode::Char('d')=> self.disable_monitor(),
             KeyCode::Char('m') => self.change_mode(TUIMode::Move),
-            KeyCode::Char('r') => self.change_mode_to_resolution(),
-            KeyCode::Char('s') => self.change_mode_to_scale(),
-            KeyCode::Char('w') => Monitor::save_hyprland_config(&self.monitors).expect("Failed to save Hyprland config"),
+            KeyCode::Char('r') => self.change_mode(TUIMode::Resolution),
+            KeyCode::Char('s') => self.change_mode(TUIMode::Scale),
             _ => {}
         }
     }
-
     fn handle_move_mode(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('q') => self.exit(),
+            KeyCode::Char('k') => self.move_vertical(-10),
+            KeyCode::Char('j') => self.move_vertical(10),
+            KeyCode::Char('h') => self.move_horizontal(-10),
+            KeyCode::Char('l') => self.move_horizontal(10),
+            KeyCode::Char('K') => self.move_vertical(-100),
+            KeyCode::Char('J') => self.move_vertical(100),
+            KeyCode::Char('H') => self.move_horizontal(-100),
+            KeyCode::Char('L') => self.move_horizontal(100),
             KeyCode::Esc => self.change_mode(TUIMode::View),
-            KeyCode::Char('k')=> self.move_vertical(-10),
-            KeyCode::Char('j')=> self.move_vertical(10),
-            KeyCode::Char('h')=> self.move_horizontal(-10),
-            KeyCode::Char('l')=> self.move_horizontal(10),
-            KeyCode::Char('K')=> self.move_vertical(-100),
-            KeyCode::Char('J')=> self.move_vertical(100),
-            KeyCode::Char('H')=> self.move_horizontal(-100),
-            KeyCode::Char('L')=> self.move_horizontal(100),
-            KeyCode::Char('w') => Monitor::save_hyprland_config(&self.monitors).expect("Failed to save Hyprland config"),
             _ => {}
         }
     }
 
     fn handle_resolution_mode(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('q') => self.exit(),
             KeyCode::Char('k')=> self.previous_resolution(),
             KeyCode::Char('j')=> self.next_resolution(),
             KeyCode::Char(' ')=> self.select_resolution(),
             KeyCode::Esc => self.change_mode(TUIMode::View),
-            KeyCode::Char('w') => Monitor::save_hyprland_config(&self.monitors).expect("Failed to save Hyprland config"),
             _ => {}
         }
     }
 
     fn handle_scale_mode(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('q') => self.exit(),
             KeyCode::Char('k')=> self.previous_scale(),
             KeyCode::Char('j')=> self.next_scale(),
             KeyCode::Char(' ')=> self.select_scale(),
             KeyCode::Esc => self.change_mode(TUIMode::View),
-            KeyCode::Char('w') => Monitor::save_hyprland_config(&self.monitors).expect("Failed to save Hyprland config"),
             _ => {}
         }
     }
-    
+     
     fn exit(&mut self) {
         self.exit = true;
     }
-
+    
+    fn write(&mut self) {
+        Monitor::save_hyprland_config(&self.monitors).expect("Failed to save Hyprland config");
+    }         
+  
     fn change_mode(&mut self, mode: TUIMode) {
         self.mode = mode;
     }
-    fn change_mode_to_resolution(&mut self) {
 
-        self.selected_resolution = self.monitors[self.selected_monitor].get_current_resolution_index();
-        self.mode = TUIMode::Resolution;
-    }
-    
-    fn change_mode_to_scale(&mut self) {
-
-        self.selected_scale = 0;
-        self.mode = TUIMode::Scale;
-    }
-
-    fn select_down(&mut self) {
-        if self.selected_monitor>= self.monitors.len() - 1 {
-            self.selected_monitor = 0;
+    fn next_monitor(&mut self) {
+        self.selected_monitor = if self.selected_monitor >= self.monitors.len() - 1 {
+            0
         } else {
-            self.selected_monitor+= 1;
+            self.selected_monitor + 1
         }
     }
 
-    fn select_up(&mut self) {
-        if self.selected_monitor== 0 {
-            self.selected_monitor = self.monitors.len() - 1;
+    fn previous_monitor(&mut self) {
+        self.selected_monitor = if self.selected_monitor == 0 {
+            self.monitors.len() - 1
         } else {
-            self.selected_monitor -= 1;
+            self.selected_monitor - 1
         }
     }
 
     fn next_resolution(&mut self) {
-        if self.selected_resolution>= self.monitors[self.selected_monitor].modes.len() - 1 {
-            self.selected_resolution= 0;
+        self.selected_resolution = if self.selected_resolution >= self.monitors[self.selected_monitor].modes.len() - 1 {
+            0
         } else {
-            self.selected_resolution+= 1;
+            self.selected_resolution + 1
         }
     }
 
     fn previous_resolution(&mut self) {
-        if self.selected_resolution == 0 {
-            self.selected_resolution = self.monitors[self.selected_monitor].modes.len() - 1;
+        self.selected_resolution = if self.selected_resolution == 0 {
+            self.monitors[self.selected_monitor].modes.len() - 1
         } else {
-            self.selected_resolution -= 1;
+            self.selected_resolution - 1
         }
     }
 
@@ -192,18 +178,18 @@ impl App {
     }
 
     fn next_scale(&mut self) {
-        if self.selected_scale>= ScaleValue::table().len() - 1 {
-            self.selected_scale= 0;
+        self.selected_scale = if self.selected_scale >= ScaleValue::table().len() - 1 {
+            0
         } else {
-            self.selected_scale+= 1;
+            self.selected_scale + 1
         }
     }
 
     fn previous_scale(&mut self) {
-        if self.selected_scale== 0 {
-            self.selected_scale= ScaleValue::table().len()- 1;
+        self.selected_scale = if self.selected_scale == 0 {
+            ScaleValue::table().len() - 1
         } else {
-            self.selected_scale-= 1;
+            self.selected_scale - 1
         }
     }
 
@@ -212,19 +198,20 @@ impl App {
         self.monitors[self.selected_monitor].scale = scale_value;
     }
 
-
     fn move_vertical(&mut self, direction: i32) {
         self.monitors[self.selected_monitor].move_vertical(direction);
     }
+
     fn move_horizontal(&mut self, direction: i32) {
         self.monitors[self.selected_monitor].move_horizontal(direction);
     }
+
     fn disable_monitor(&mut self) {
         self.monitors[self.selected_monitor].enabled = false;
     }
+
     fn enable_monitor(&mut self) {
         self.monitors[self.selected_monitor].enabled = true;
-
         self.monitors[self.selected_monitor].position = Some(
             Position {
                 x: 0,
@@ -232,18 +219,18 @@ impl App {
             }
         );
         self.monitors[self.selected_monitor].scale = Some(1.0);
-
-        
     }
 }
 
 impl Widget for &App {
+
     fn render(self,area: Rect, buf: &mut Buffer) {
-        let mut monitor_list= MonitorList::new(
+        let mut monitor_list = MonitorList::new(
             &self.monitors,
             self.mode,
             Some(self.selected_monitor), 
-        ); 
+        );
+
         let canvas = Map {
             mode: self.mode,
             selected: self.selected_monitor,
@@ -279,8 +266,8 @@ impl Widget for &App {
                 let inner_top_layout = Layout::default()
                     .direction(Direction::Horizontal)
                     .constraints(vec![
-                        Constraint::Percentage(70),
-                        Constraint::Percentage(30),
+                        Constraint::Percentage(90),
+                        Constraint::Percentage(10),
                     ])
                     .split(outer_layout[0]);
                 canvas.render(inner_top_layout[0], buf);
@@ -290,7 +277,7 @@ impl Widget for &App {
                 canvas.render(outer_layout[0], buf);
             }
         }
-        monitor_list.render(outer_layout[1],buf);
+        monitor_list.render(outer_layout[1], buf);
     }
 }
 

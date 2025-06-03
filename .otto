@@ -1,0 +1,4 @@
+{
+  "option":"display-tui",
+  "action": "~/src/rust/display-tui/"
+}

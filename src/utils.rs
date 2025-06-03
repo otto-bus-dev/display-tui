@@ -1,5 +1,6 @@
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Default,Debug, Clone, Copy, PartialEq)]
 pub enum TUIMode {
+    #[default]
     View,
     Move,
     Resolution,
