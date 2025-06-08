@@ -2,7 +2,10 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Stylize,Color,Style},
-    symbols::Marker,
+    symbols::{
+        Marker,
+        border,
+    },
     text::Line,
     widgets::{
         Block,
@@ -34,15 +37,18 @@ impl<'a> Widget for Map<'a>{
 
         let monitor_canvas = Monitor::get_monitors_canvas(self.monitors,&area);
 
-        let title = Line::from(" Map ".bold());
+        let title = Line::from(" Map ".white().bold());
+
+        let block = Block::bordered()
+            .title(title.centered())
+            .border_set(border::THICK)
+            .border_style(Style::default().fg(
+                if self.mode == TUIMode::Move {Color::Yellow} else {Color::White}));
+
 
         Canvas::default()
             .marker(Marker::HalfBlock)
-            .block(
-                Block::bordered()
-                    .style(Style::default().fg(if self.mode == TUIMode::Move{Color::Yellow} else {Color::White}))
-                    .title(title.white().centered())
-            )
+            .block(block)
             .x_bounds(monitor_canvas.x_bounds)
             .y_bounds(monitor_canvas.y_bounds)
             .paint(|ctx| {
@@ -103,28 +109,109 @@ impl<'a> Map<'a> {
         });
     }
 }
-//
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use ratatui::style::Style;
-//
-//     #[test]
-//     fn render() {
-//         let map= Map::default();
-//         let mut buf = Buffer::empty(Rect::new(0, 0, 50, 4));
-//
-//         map.render(buf.area, &mut buf);
-//
-//         let mut expected = Buffer::with_lines(vec![
-//             "┏━━━━━━━━━━━━━━━━━━━━ Canvas ━━━━━━━━━━━━━━━━━━━━┓",
-//             "┃                                                ┃",
-//             "┃                                                ┃",
-//             "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛",
-//         ]);
-//         // let title_style = Style::new().bold();
-//         // expected.set_style(Rect::new(21, 0, 8, 1), title_style);
-//         // //
-//         // assert_eq!(buf, expected);
-//     }
-// }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ratatui::style::Style;
+    use crate::test_utils::test_monitors;
+
+    #[test]
+    fn render_map() {
+        let map = Map {
+            selected: 0,
+            mode: TUIMode::View,
+            monitors: &test_monitors(),
+        }; 
+        let mut buf = Buffer::empty(Rect::new(0, 0, 100, 30));
+        
+        map.render(buf.area, &mut buf);
+
+        let mut expected = Buffer::with_lines(vec![
+            "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Map ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓",
+            "┃                                                                                                  ┃",
+            "┃                                                                                                  ┃",
+            "┃                                                                                                  ┃",
+            "┃                                                                                                  ┃",
+            "┃                                                                                                  ┃",
+            "┃                                █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█                                 ┃",
+            "┃                                █  Monitor 1                    █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                █                               █                                 ┃",
+            "┃                                ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                 ┃",
+            "┃                                                                                                  ┃",
+            "┃                                                                                                  ┃",
+            "┃                                                                                                  ┃",
+            "┃                                                                                                  ┃",
+            "┃                                                                                                  ┃",
+            "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛",
+        ]);
+        let vertical_line_style = Style::new().fg(Color::Yellow).bg(Color::Yellow);
+        
+        let horizontal_line_style = Style::new().fg(Color::Yellow);
+        let border_style = Style::new().fg(Color::White);
+        let title_style = Style::new().bold().fg(Color::White);
+        let empty_style = Style::new();
+
+        expected.set_style(Rect::new(0, 0, 47, 1), border_style);
+        expected.set_style(Rect::new(47, 0, 5, 1), title_style);
+        expected.set_style(Rect::new(52, 0, 48, 1), border_style);       
+
+        expected.set_style(Rect::new(0, 1, 1, 5), border_style);
+        expected.set_style(Rect::new(1, 1, 98, 5), empty_style);
+        expected.set_style(Rect::new(99, 1, 1, 5), border_style);
+
+        expected.set_style(Rect::new(0, 6, 1, 1), border_style);
+        expected.set_style(Rect::new(1, 6, 32, 1), empty_style);
+        expected.set_style(Rect::new(33, 6, 1, 1), vertical_line_style);
+        expected.set_style(Rect::new(34, 6, 31, 1), horizontal_line_style);
+        expected.set_style(Rect::new(65, 6, 1, 1), vertical_line_style);
+        expected.set_style(Rect::new(66, 6, 33, 1), empty_style);
+        expected.set_style(Rect::new(99, 6, 1, 1), border_style);
+ 
+        expected.set_style(Rect::new(0, 7, 1, 1), border_style);
+        expected.set_style(Rect::new(1, 7, 32, 1), empty_style);
+        expected.set_style(Rect::new(33, 7, 1, 1), vertical_line_style);
+        expected.set_style(Rect::new(34, 7, 2, 1), empty_style);
+        expected.set_style(Rect::new(36, 7, 9, 1), horizontal_line_style);
+        expected.set_style(Rect::new(45, 7, 20, 1), empty_style);
+        expected.set_style(Rect::new(65, 7, 1, 1), vertical_line_style);
+        expected.set_style(Rect::new(66, 7, 33, 1), empty_style);
+        expected.set_style(Rect::new(99, 7, 1, 1), border_style);
+        
+        expected.set_style(Rect::new(0, 8, 1, 15), border_style);
+        expected.set_style(Rect::new(1, 8, 32, 15), empty_style);
+        expected.set_style(Rect::new(33, 8, 1, 15), vertical_line_style);
+        expected.set_style(Rect::new(34, 8, 31, 15), empty_style);
+        expected.set_style(Rect::new(65, 8, 1, 15), vertical_line_style);
+        expected.set_style(Rect::new(66, 8, 33, 15), empty_style);
+        expected.set_style(Rect::new(99, 8, 1, 15), border_style);
+ 
+        expected.set_style(Rect::new(0, 23, 1, 1), border_style);
+        expected.set_style(Rect::new(1, 23, 32, 1), empty_style);
+        expected.set_style(Rect::new(33, 23, 33, 1), horizontal_line_style);
+        expected.set_style(Rect::new(66, 23, 33, 1), empty_style);
+        expected.set_style(Rect::new(99, 23, 1, 1), border_style);       
+
+        expected.set_style(Rect::new(0, 24, 1, 5), border_style);
+        expected.set_style(Rect::new(1, 24, 98, 5), empty_style);
+        expected.set_style(Rect::new(99, 24, 1, 5), border_style);
+
+        expected.set_style(Rect::new(0,29, 100, 1), border_style);
+
+        assert_eq!(buf, expected);
+    }
+}

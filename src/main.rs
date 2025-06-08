@@ -14,6 +14,8 @@ mod resolutions;
 mod utils;
 mod scale;
 mod configuration;
+mod test_utils;
+
 use list::MonitorList;
 use map::Map;
 use monitor::{Monitor,Position};
@@ -289,20 +291,138 @@ impl Widget for &App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::test_monitors;
    
     #[test]
-    fn handle_key_event() -> io::Result<()> {
-        let mut app = App::default();
+    fn handle_mode_view_key_event() -> io::Result<()> {
+        let mut app = App{
+            monitors: test_monitors(),
+            selected_monitor: 0,
+            ..Default::default()
+        };
+
         app.handle_key_event(KeyCode::Char('k').into());
         assert_eq!(app.selected_monitor, 1);
 
         app.handle_key_event(KeyCode::Char('j').into());
         assert_eq!(app.selected_monitor, 0);
 
-        let mut app = App::default();
+        app.handle_key_event(KeyCode::Char('j').into());
+        assert_eq!(app.selected_monitor, app.monitors.len() - 1);
+
+        app.handle_key_event(KeyCode::Char('k').into());
+        assert_eq!(app.selected_monitor, 0);
+       
+        app.handle_key_event(KeyCode::Char('m').into());
+        assert_eq!(app.mode, TUIMode::Move);
+    
+        app.handle_key_event(KeyCode::Esc.into());
+        assert_eq!(app.mode, TUIMode::View);
+
+        app.handle_key_event(KeyCode::Char('r').into());
+        assert_eq!(app.mode, TUIMode::Resolution);
+    
+        app.handle_key_event(KeyCode::Esc.into());
+        assert_eq!(app.mode, TUIMode::View);
+
+        app.handle_key_event(KeyCode::Char('s').into());
+        assert_eq!(app.mode, TUIMode::Scale);
+    
+        app.handle_key_event(KeyCode::Esc.into());
+        assert_eq!(app.mode, TUIMode::View);
+
         app.handle_key_event(KeyCode::Char('q').into());
         assert!(app.exit);
 
         Ok(())
     }
+     
+         
+    #[test]
+    fn handle_mode_move_key_event() -> io::Result<()> {
+        let mut app = App{
+            monitors: test_monitors(),
+            selected_monitor: 0,
+            ..Default::default()
+        };
+ 
+        app.handle_key_event(KeyCode::Char('m').into());
+        assert_eq!(app.mode, TUIMode::Move);
+
+        app.handle_key_event(KeyCode::Char('k').into());
+        let monitor = app.monitors[app.selected_monitor].clone();
+        assert_eq!(monitor.position.unwrap().y, -10);
+
+        app.handle_key_event(KeyCode::Char('j').into());
+        let monitor = app.monitors[app.selected_monitor].clone();
+        assert_eq!(monitor.position.unwrap().y, 0);
+
+        app.handle_key_event(KeyCode::Char('h').into());
+        let monitor = app.monitors[app.selected_monitor].clone();
+        assert_eq!(monitor.position.unwrap().x, -10);
+
+        app.handle_key_event(KeyCode::Char('l').into());
+        let monitor = app.monitors[app.selected_monitor].clone();
+        assert_eq!(monitor.position.unwrap().x, 0);
+
+        app.handle_key_event(KeyCode::Char('q').into());
+        assert!(app.exit);
+
+        Ok(())
+    }       
+    #[test]
+    fn handle_mode_resolution_key_event() -> io::Result<()> {
+        let mut app = App{
+            monitors: test_monitors(),
+            selected_monitor: 0,
+            ..Default::default()
+        };
+
+        app.handle_key_event(KeyCode::Char('r').into());
+        assert_eq!(app.mode, TUIMode::Resolution);
+
+        app.selected_resolution = 0;
+        app.handle_key_event(KeyCode::Char('j').into());
+        assert_eq!(app.selected_resolution, 1);
+
+        app.handle_key_event(KeyCode::Char('k').into());
+        assert_eq!(app.selected_resolution, 0);
+
+        app.handle_key_event(KeyCode::Char(' ').into());
+        let monitor = app.monitors[0].clone();
+        assert_eq!(monitor.modes[0].current, true);
+
+        app.handle_key_event(KeyCode::Char('q').into());
+        assert!(app.exit);
+
+        Ok(())
+    }    
+
+    #[test]
+    fn handle_mode_scale_key_event() -> io::Result<()> {
+        let mut app = App{
+            monitors: test_monitors(),
+            selected_monitor: 0,
+            ..Default::default()
+        };
+
+        app.handle_key_event(KeyCode::Char('s').into());
+        assert_eq!(app.mode, TUIMode::Scale);
+
+        app.selected_scale = 0;
+        app.handle_key_event(KeyCode::Char('j').into());
+        assert_eq!(app.selected_scale, 1);
+
+        app.handle_key_event(KeyCode::Char('k').into());
+        assert_eq!(app.selected_scale, 0);
+
+        app.handle_key_event(KeyCode::Char(' ').into());
+        let monitor = app.monitors[0].clone();
+        assert_eq!(monitor.scale, Some(0.5));
+
+        app.handle_key_event(KeyCode::Char('q').into());
+        assert!(app.exit);
+
+        Ok(())
+    }       
 }

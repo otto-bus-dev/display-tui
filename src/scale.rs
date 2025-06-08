@@ -76,30 +76,49 @@ mod tests {
     use ratatui::style::Style;
 
     #[test]
-    fn render() {
-        let mut app = Scale {
+    fn render_scale() {
+
+        let mut scales = Scale{
             state: TableState::default(),
         }; 
-        let mut buf = Buffer::empty(Rect::new(0, 0, 50, 4));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 20, 11));
         
-        
-        app.render(buf.area, &mut buf);
+        scales.render(buf.area, &mut buf);
 
         let mut expected = Buffer::with_lines(vec![
-            "┏━━━━━━━━━━━━━━━━━━ Properties ━━━━━━━━━━━━━━━━━━┓",
-            "┃                    Value: 0                    ┃",
-            "┃                                                ┃",
-            "┗━ Decrement <Left> Increment <Right> Quit <Q> ━━┛",
+            "┏━━━━━ Scale ━━━━━━┓",
+            "┃       50%        ┃",
+            "┃       66%        ┃",
+            "┃       75%        ┃",
+            "┃       80%        ┃",
+            "┃       100%       ┃",
+            "┃       125%       ┃",
+            "┃       160%       ┃",
+            "┃       175%       ┃",
+            "┃       200%       ┃",
+            "┗━━━━━━━━━━━━━━━━━━┛",
         ]);
-        let title_style = Style::new().bold();
-        let counter_style = Style::new().yellow();
-        let key_style = Style::new().blue().bold();
-        expected.set_style(Rect::new(19, 0, 12, 1), title_style);
-        expected.set_style(Rect::new(28, 1, 1, 1), counter_style);
-        expected.set_style(Rect::new(13, 3, 6, 1), key_style);
-        expected.set_style(Rect::new(30, 3, 7, 1), key_style);
-        expected.set_style(Rect::new(43, 3, 4, 1), key_style);
+
+        let border_style = Style::new().fg(Color::Yellow);
+        let title_style = Style::new().bold().fg(Color::White);
+        let row_style = Style::new();
+
+        // first line : title
+        expected.set_style(Rect::new(0, 0, 6, 1), border_style);
+        expected.set_style(Rect::new(6, 0, 7, 1), title_style);
+        expected.set_style(Rect::new(13, 0, 7, 1), border_style);       
+
+        // second line : row 
+        for i in 0..ScaleValue::table().len() {
+            expected.set_style(Rect::new(0, (i + 1) as u16, 1, 1), border_style);
+            expected.set_style(Rect::new(1, (i + 1) as u16, 18, 1), row_style);
+            expected.set_style(Rect::new(19, (i + 1) as u16, 1, 1), border_style);
+        }
+
+        // last line : instructions 
+        expected.set_style(Rect::new(0,10, 20, 1), border_style);
 
         assert_eq!(buf, expected);
     }
 }
+

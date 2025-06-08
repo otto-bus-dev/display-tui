@@ -1,7 +1,6 @@
 use serde::Deserialize;
 use std::process::Command;
 use std::io::Write;
-use crate::configuration::Configuration;
 use ratatui::layout::Rect;
 #[derive(Debug,Default, Clone, Deserialize)]
 pub struct Monitor {

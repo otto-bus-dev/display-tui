@@ -140,61 +140,73 @@ impl<'a> Resolutions<'a> {
 mod tests {
     use super::*;
     use ratatui::style::Style;
-    use crate::monitor::{Monitor, Position, Resolution};
+    use crate::test_utils::test_monitors;
 
     #[test]
-    fn render() {
+    fn render_resolutions() {
+
         let mut resolutions = Resolutions {
             state: TableState::default(),
-            monitor:&Monitor {
-                    name: "Monitor 2".to_string(),
-                    description: None,
-                    enabled: false,
-                    modes: vec![
-                        // Example modes
-                        Resolution {
-                            width: 1920,
-                            height: 1080,
-                            refresh: 60.0,
-                            preferred: true,
-                            current: false,
-                        },
-                        Resolution {
-                            width: 1280,
-                            height: 720,
-                            refresh: 60.0,
-                            preferred: false,
-                            current: true,
-                        },
-                    ],
-                    position: Some(Position { x: 1920, y: 0 }),
-                    scale: Some(1.0),
-                },
+            monitor:&test_monitors()[0],
             
         }; 
-        let mut buf = Buffer::empty(Rect::new(0, 0, 84, 4));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 65, 7));
         
         resolutions.render(buf.area, &mut buf);
 
         let mut expected = Buffer::with_lines(vec![
             "┏━━━━━━━━━━━━━━━━━━━━━━━━━ Resolutions ━━━━━━━━━━━━━━━━━━━━━━━━━┓",
-            "┃  resolution      refresh       preferred       current        ┃",
+            "┃    current       resolution        refresh        preferred   ┃",
             "┃                                                               ┃",
-            "┃  1920x1080       60            true            false          ┃",
-            "┃>>1280x720        60            false           true           ┃",
-            "┃                                                               ┃",
-            "┃                                                               ┃",
+            "┃                  1920x1080          60                      ┃",
+            "┃                  1280x720           60                      ┃",
             "┃                                                               ┃",
             "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛",
         ]);
-        let title_style = Style::new().bold();
-        let counter_style = Style::new().yellow();
-        let key_style = Style::new().blue().bold();
-        expected.set_style(Rect::new(19, 0, 12, 1), title_style);
-        expected.set_style(Rect::new(28, 1, 1, 1), counter_style);
-        expected.set_style(Rect::new(13, 3, 6, 1), key_style);
-        expected.set_style(Rect::new(30, 3, 7, 1), key_style);
-        expected.set_style(Rect::new(43, 3, 4, 1), key_style);
+        let border_style = Style::new().fg(Color::Yellow);
+        let title_style = Style::new().bold().fg(Color::White);
+        let header_style = Style::new().green().bold().reversed();
+        let empty_style = Style::new();
+        let ok_style = Style::new().fg(Color::Green);
+        let nok_style = Style::new().fg(Color::Red);
+        let row_style = Style::new();
+
+        // first line : title
+        expected.set_style(Rect::new(0, 0, 26, 1), border_style);
+        expected.set_style(Rect::new(26, 0, 13, 1), title_style);
+        expected.set_style(Rect::new(39, 0, 26, 1), border_style);       
+
+        // second line : header
+        expected.set_style(Rect::new(0, 1, 1, 1), border_style);
+        expected.set_style(Rect::new(1, 1, 63, 1), header_style);
+        expected.set_style(Rect::new(64, 1, 1, 1), border_style);
+        
+        // third line : empty
+        expected.set_style(Rect::new(0, 2, 1, 1), border_style);
+        expected.set_style(Rect::new(1, 2, 63, 1), empty_style);
+        expected.set_style(Rect::new(64, 2, 1, 1), border_style);
+         
+        // fourth line : first row 
+        expected.set_style(Rect::new(0, 3, 1, 1), border_style);
+        expected.set_style(Rect::new(1, 3, 15, 1), ok_style);
+        expected.set_style(Rect::new(16, 3, 33, 1), row_style);
+        expected.set_style(Rect::new(49, 3, 15, 1), ok_style);
+        expected.set_style(Rect::new(64, 3, 1, 1), border_style);      
+
+        // fifth line : second row 
+        expected.set_style(Rect::new(0, 4, 1, 1), border_style);
+        expected.set_style(Rect::new(1, 4, 15, 1), nok_style);
+        expected.set_style(Rect::new(16, 4, 33, 1), row_style);
+        expected.set_style(Rect::new(49, 4, 15, 1), nok_style);
+        expected.set_style(Rect::new(64, 4, 1, 1), border_style);  
+        
+        // fifth line : empty
+        expected.set_style(Rect::new(0, 5, 1, 1), border_style);
+        expected.set_style(Rect::new(1, 5, 63, 1), empty_style);
+        expected.set_style(Rect::new(64, 5, 1, 1), border_style);
+
+        // last line : instructions 
+        expected.set_style(Rect::new(0,6, 65, 1), border_style);
 
         assert_eq!(buf, expected);
     }

@@ -32,7 +32,7 @@ Built with Rust and the `crossterm` and `ratatui` libraries, it provides a user-
    cargo build --release
    cp target/release/display-tui /usr/local/bin/ # or your preferred location
    ```
-2. Create a display-tui configuration file or run display-config to generate the default one :
+2. Create a display-tui configuration file or run display-tui a first time to generate the default one :
    The configuration file is a json file that contains the tui settings.
    It contains only one field `monitors_config_path` which is the path where display-tui will save the monitors configuration for hyprland.
    the default path is `~/.config/hypr/hyprland/monitors.conf`.
