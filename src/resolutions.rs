@@ -140,7 +140,7 @@ impl<'a> Resolutions<'a> {
 mod tests {
     use super::*;
     use ratatui::style::Style;
-    use crate::test_utils::test_monitors;
+    use crate::test_utils::tests::test_monitors;
 
     #[test]
     fn render_resolutions() {

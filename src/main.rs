@@ -291,7 +291,7 @@ impl Widget for &App {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::test_monitors;
+    use crate::test_utils::tests::test_monitors;
    
     #[test]
     fn handle_mode_view_key_event() -> io::Result<()> {
