@@ -172,11 +172,12 @@ impl Monitor {
         
     }
     pub fn save_hyprland_config(path:&String,monitors: &Vec<Monitor>) -> std::io::Result<()> {
+        let expanded_path = shellexpand::tilde(path).to_string();
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .truncate(true)
             .create(true)
-            .open(path)?;
+            .open(expanded_path)?;
         for monitor in monitors {
             let config_line = monitor.to_hyprland_config();
             writeln!(file, "{}", config_line)?;
