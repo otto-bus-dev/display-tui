@@ -1,3 +1,4 @@
+use crossterm::event::{KeyCode,KeyEvent};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -9,6 +10,8 @@ use ratatui::{
 
 use ratatui::layout::Constraint;
 use crate::monitor::Monitor;
+use crate::utils::TUIMode;
+use crate::App;
 
 #[derive(Debug)]
 pub struct Resolutions<'a> {
@@ -24,6 +27,39 @@ impl<'a> Resolutions<'a> {
                 .with_selected(selected),
             monitor,
         }
+    }
+ 
+    pub fn handle_events(app:&mut App, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('k')=> Resolutions::previous(app),
+            KeyCode::Char('j')=> Resolutions::next(app),
+            KeyCode::Char(' ')=> Resolutions::select(app),
+            KeyCode::Esc => Resolutions::change_mode(app,TUIMode::View),
+            _ => {}
+        }
+    }
+    fn change_mode(app:&mut App,mode: TUIMode) {
+        app.mode = mode;
+    }
+
+    fn next(app:&mut App) {
+        app.selected_resolution = if app.selected_resolution >= app.monitors[app.selected_monitor].modes.len() - 1 {
+            0
+        } else {
+            app.selected_resolution + 1
+        }
+    }
+
+    fn previous(app:&mut App) {
+        app.selected_resolution = if app.selected_resolution == 0 {
+            app.monitors[app.selected_monitor].modes.len() - 1
+        } else {
+            app.selected_resolution - 1
+        }
+    }
+
+    fn select(app:&mut App) {
+        app.monitors[app.selected_monitor].set_current_resolution(app.selected_resolution);
     }
 
     fn resolutions_to_rows(&self) -> Vec<Row<'static>> {

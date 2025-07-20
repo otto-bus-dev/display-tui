@@ -1,3 +1,4 @@
+use crossterm::event::{KeyCode,KeyEvent};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -9,6 +10,8 @@ use ratatui::{
 
 use ratatui::layout::Constraint;
 use crate::utils::ScaleValue;
+use crate::utils::TUIMode;
+use crate::App;
 
 #[derive(Debug)]
 pub struct Scale{
@@ -21,6 +24,41 @@ impl Scale{
             state: TableState::default()
                 .with_selected(selected),
         }
+    }
+
+
+    pub fn handle_events(app:&mut App, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('k')=> Scale::previous(app),
+            KeyCode::Char('j')=> Scale::next(app),
+            KeyCode::Char(' ')=> Scale::select(app),
+            KeyCode::Esc => Scale::change_mode(app,TUIMode::View),
+            _ => {}
+        }
+    }
+    fn change_mode(app:&mut App,mode: TUIMode) {
+        app.mode = mode;
+    }
+
+    fn next(app:&mut App) {
+        app.selected_scale = if app.selected_scale >= ScaleValue::table().len() - 1 {
+            0
+        } else {
+            app.selected_scale + 1
+        }
+    }
+
+    fn previous(app:&mut App) {
+        app.selected_scale = if app.selected_scale == 0 {
+            ScaleValue::table().len() - 1
+        } else {
+            app.selected_scale - 1
+        }
+    }
+
+    fn select(app:&mut App) {
+        let scale_value = Some(ScaleValue::table()[app.selected_scale].value);
+        app.monitors[app.selected_monitor].scale = scale_value;
     }
 
 

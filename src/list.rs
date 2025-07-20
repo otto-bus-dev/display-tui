@@ -1,3 +1,4 @@
+use crossterm::event::{KeyCode,KeyEvent};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -6,10 +7,11 @@ use ratatui::{
     text::Line,
     widgets::{Cell,Block,StatefulWidget,Row,Table,TableState},
 };
+use crate::monitor::{Monitor,Position};
 
 use ratatui::layout::Constraint;
-use crate::monitor::Monitor;
 use crate::utils::TUIMode;
+use crate::App;
 
 #[derive(Debug)]
 pub struct MonitorList<'a> {
@@ -29,6 +31,53 @@ impl<'a> MonitorList<'a> {
                 .with_selected(selected_row),
             monitors,
         }
+    }
+
+    pub fn handle_events(app:&mut App, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('k')=> MonitorList::previous_monitor(app),
+            KeyCode::Char('j')=> MonitorList::next_monitor(app),
+            KeyCode::Char('e')=> MonitorList::enable_monitor(app),
+            KeyCode::Char('d')=> MonitorList::disable_monitor(app),
+            KeyCode::Char('m') => MonitorList::change_mode(app,TUIMode::Move),
+            KeyCode::Char('r') => MonitorList::change_mode(app,TUIMode::Resolution),
+            KeyCode::Char('s') => MonitorList::change_mode(app,TUIMode::Scale),
+            _ => {}
+        }
+    }
+    fn change_mode(app:&mut App,mode: TUIMode) {
+        app.mode = mode;
+    }
+
+    fn next_monitor(app:&mut App) {
+        app.selected_monitor = if app.selected_monitor >= app.monitors.len() - 1 {
+            0
+        } else {
+            app.selected_monitor + 1
+        }
+    }
+
+    fn previous_monitor(app:&mut App) {
+        app.selected_monitor = if app.selected_monitor == 0 {
+            app.monitors.len() - 1
+        } else {
+            app.selected_monitor - 1
+        }
+    }
+    
+    fn disable_monitor(app:&mut App) {
+        app.monitors[app.selected_monitor].enabled = false;
+    }
+
+    fn enable_monitor(app:&mut App) {
+        app.monitors[app.selected_monitor].enabled = true;
+        app.monitors[app.selected_monitor].position = Some(
+            Position {
+                x: 0,
+                y: 0,
+            }
+        );
+        app.monitors[app.selected_monitor].scale = Some(1.0);
     }
 
     fn monitors_to_rows(&self) -> Vec<Row<'static>> {

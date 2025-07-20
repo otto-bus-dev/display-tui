@@ -1,3 +1,4 @@
+use crossterm::event::{KeyCode,KeyEvent};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -16,7 +17,7 @@ use ratatui::{
         }
     },
 };
-
+use crate::App;
 
 use crate::monitor::{
     Monitor
@@ -69,9 +70,36 @@ impl<'a> Widget for Map<'a>{
             })
             .render(area, buf);
     } 
+
+    
 }
 impl<'a> Map<'a> {
    
+    pub fn handle_events(app:&mut App, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('k') => Map::move_vertical(app,-10),
+            KeyCode::Char('j') => Map::move_vertical(app,10),
+            KeyCode::Char('h') => Map::move_horizontal(app,-10),
+            KeyCode::Char('l') => Map::move_horizontal(app,10),
+            KeyCode::Char('K') => Map::move_vertical(app,-100),
+            KeyCode::Char('J') => Map::move_vertical(app,100),
+            KeyCode::Char('H') => Map::move_horizontal(app,-100),
+            KeyCode::Char('L') => Map::move_horizontal(app,100),
+            KeyCode::Esc => Map::change_mode(app,TUIMode::View),
+            _ => {}
+        }
+    }
+    fn change_mode(app:&mut App,mode: TUIMode) {
+        app.mode = mode;
+    }
+    fn move_vertical(app:&mut App, direction: i32) {
+        app.monitors[app.selected_monitor].move_vertical(direction);
+    }
+
+    fn move_horizontal(app:&mut App, direction: i32) {
+        app.monitors[app.selected_monitor].move_horizontal(direction);
+    }
+
     pub fn render_enabled_monitor(
         &self,
         ctx: &mut ratatui::widgets::canvas::Context,
