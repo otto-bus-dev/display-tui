@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode,KeyEvent};
+use crossterm::event::{KeyCode,KeyEvent,KeyModifiers};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -17,13 +17,12 @@ use ratatui::{
         }
     },
 };
-use crate::App;
-
-use crate::monitor::{
-    Monitor
-    ,MonitorCanvas
+use crate::{
+    App,
+    monitor::{Monitor, MonitorCanvas},
+    rotation::Rotation,
+    utils::TUIMode,
 };
-use crate::utils::TUIMode;
 
 #[derive(Debug)]
 pub struct Map<'a>{
@@ -76,15 +75,24 @@ impl<'a> Widget for Map<'a>{
 impl<'a> Map<'a> {
    
     pub fn handle_events(app:&mut App, key_event: KeyEvent) {
+        let is_shift = key_event.modifiers.contains(KeyModifiers::SHIFT);
         match key_event.code {
-            KeyCode::Char('k') => Map::move_vertical(app,-10),
-            KeyCode::Char('j') => Map::move_vertical(app,10),
-            KeyCode::Char('h') => Map::move_horizontal(app,-10),
-            KeyCode::Char('l') => Map::move_horizontal(app,10),
-            KeyCode::Char('K') => Map::move_vertical(app,-100),
-            KeyCode::Char('J') => Map::move_vertical(app,100),
-            KeyCode::Char('H') => Map::move_horizontal(app,-100),
-            KeyCode::Char('L') => Map::move_horizontal(app,100),
+            KeyCode::Char('k') => Map::snap_vertical(app, -1),
+            KeyCode::Char('K') => Map::move_vertical(app, -10),
+            KeyCode::Up => if is_shift { Map::move_vertical(app, -10) } else { Map::snap_vertical(app, -1) },
+
+            KeyCode::Char('j') => Map::snap_vertical(app, 1),
+            KeyCode::Char('J') => Map::move_vertical(app, 10),
+            KeyCode::Down => if is_shift { Map::move_vertical(app, 10) } else { Map::snap_vertical(app, 1) },
+
+            KeyCode::Char('h') => Map::snap_horizontal(app, -1),
+            KeyCode::Char('H') => Map::move_horizontal(app, -10),
+            KeyCode::Left => if is_shift { Map::move_horizontal(app, -10) } else { Map::snap_horizontal(app, -1) },
+
+            KeyCode::Char('l') => Map::snap_horizontal(app, 1),
+            KeyCode::Char('L') => Map::move_horizontal(app, 10),
+            KeyCode::Right => if is_shift { Map::move_horizontal(app, 10) } else { Map::snap_horizontal(app, 1) },
+            
             KeyCode::Esc => Map::change_mode(app,TUIMode::View),
             _ => {}
         }
@@ -95,9 +103,83 @@ impl<'a> Map<'a> {
     fn move_vertical(app:&mut App, direction: i32) {
         app.monitors[app.selected_monitor].move_vertical(direction);
     }
+    fn snap_vertical(app:&mut App, direction: i32) {
+        let selected_index = app.selected_monitor;
+        let mut targets = vec![0.0];
+        
+        for (i, monitor) in app.monitors.iter().enumerate() {
+            if i == selected_index || !monitor.enabled { continue; }
+            let (_, y, _, h) = monitor.get_geometry();
+            targets.push(y);
+            targets.push(y + h);
+            targets.push(y + h / 2.0);
+        }
+
+        let (_, sy, _, sh) = app.monitors[selected_index].get_geometry();
+        let sources = vec![sy, sy + sh, sy + sh / 2.0];
+
+        let mut best_delta: Option<f64> = None;
+
+        for s in &sources {
+            for t in &targets {
+                let diff = t - s;
+                if (direction < 0 && diff < -0.1) || (direction > 0 && diff > 0.1) {
+                     match best_delta {
+                         None => best_delta = Some(diff),
+                         Some(current) => {
+                             if diff.abs() < current.abs() {
+                                 best_delta = Some(diff);
+                             }
+                         }
+                     }
+                }
+            }
+        }
+        
+        if let Some(delta) = best_delta {
+            app.monitors[selected_index].move_vertical(delta.round() as i32);
+        }
+    }
 
     fn move_horizontal(app:&mut App, direction: i32) {
         app.monitors[app.selected_monitor].move_horizontal(direction);
+    }
+    fn snap_horizontal(app:&mut App, direction: i32) {
+        let selected_index = app.selected_monitor;
+        let mut targets = vec![0.0];
+        
+        for (i, monitor) in app.monitors.iter().enumerate() {
+            if i == selected_index || !monitor.enabled { continue; }
+            let (x, _, w, _) = monitor.get_geometry();
+            targets.push(x);
+            targets.push(x + w);
+            targets.push(x + w / 2.0);
+        }
+
+        let (sx, _, sw, _) = app.monitors[selected_index].get_geometry();
+        let sources = vec![sx, sx + sw, sx + sw / 2.0];
+
+        let mut best_delta: Option<f64> = None;
+
+        for s in &sources {
+            for t in &targets {
+                let diff = t - s;
+                if (direction < 0 && diff < -0.1) || (direction > 0 && diff > 0.1) {
+                     match best_delta {
+                         None => best_delta = Some(diff),
+                         Some(current) => {
+                             if diff.abs() < current.abs() {
+                                 best_delta = Some(diff);
+                             }
+                         }
+                     }
+                }
+            }
+        }
+        
+        if let Some(delta) = best_delta {
+            app.monitors[selected_index].move_horizontal(delta.round() as i32);
+        }
     }
 
     pub fn render_enabled_monitor(
@@ -111,9 +193,20 @@ impl<'a> Map<'a> {
         if mode.is_none() {
             mode = monitor.get_prefered_resolution();
         }
-        let width = mode.unwrap().width as f64 / monitor.scale.unwrap() as f64;
+
+        let rotation = Rotation::from_transform(&monitor.transform);
+        let (width, height) = if rotation == Rotation::Deg90 || rotation == Rotation::Deg270 {
+            (
+                mode.unwrap().height as f64 / monitor.scale.unwrap() as f64,
+                mode.unwrap().width as f64 / monitor.scale.unwrap() as f64,
+            )
+        } else {
+            (
+                mode.unwrap().width as f64 / monitor.scale.unwrap() as f64,
+                mode.unwrap().height as f64 / monitor.scale.unwrap() as f64,
+            )
+        };
         let x = monitor.position.clone().unwrap().x as f64;
-        let height = mode.unwrap().height as f64 / monitor.scale.unwrap() as f64;
         let y = (monitor_canvas.top - monitor_canvas.offset_y - monitor.position.clone().unwrap().y) as f64 - height ; 
 
         let x_margin = width * 0.07; 
@@ -158,32 +251,32 @@ mod tests {
         let mut expected = Buffer::with_lines(vec![
             "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Map ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓",
             "┃                                                                                                  ┃",
-            "┃                                                                                                  ┃",
-            "┃                                                                                                  ┃",
-            "┃                                                                                                  ┃",
-            "┃                                                                                                  ┃",
-            "┃                                █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█                                 ┃",
-            "┃                                █  Monitor 1                    █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                █                               █                                 ┃",
-            "┃                                ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                 ┃",
-            "┃                                                                                                  ┃",
-            "┃                                                                                                  ┃",
-            "┃                                                                                                  ┃",
-            "┃                                                                                                  ┃",
+            "┃  █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█   ┃",
+            "┃  █     Monitor 1                                                                             █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  █                                                                                           █   ┃",
+            "┃  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀   ┃",
             "┃                                                                                                  ┃",
             "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛",
         ]);
@@ -198,47 +291,27 @@ mod tests {
         expected.set_style(Rect::new(47, 0, 5, 1), title_style);
         expected.set_style(Rect::new(52, 0, 48, 1), border_style);       
 
-        expected.set_style(Rect::new(0, 1, 1, 5), border_style);
-        expected.set_style(Rect::new(1, 1, 98, 5), empty_style);
-        expected.set_style(Rect::new(99, 1, 1, 5), border_style);
+        expected.set_style(Rect::new(0, 1, 1, 28), border_style);
+        expected.set_style(Rect::new(1, 1, 98, 28), empty_style);
+        expected.set_style(Rect::new(99, 1, 1, 28), border_style);
 
-        expected.set_style(Rect::new(0, 6, 1, 1), border_style);
-        expected.set_style(Rect::new(1, 6, 32, 1), empty_style);
-        expected.set_style(Rect::new(33, 6, 1, 1), vertical_line_style);
-        expected.set_style(Rect::new(34, 6, 31, 1), horizontal_line_style);
-        expected.set_style(Rect::new(65, 6, 1, 1), vertical_line_style);
-        expected.set_style(Rect::new(66, 6, 33, 1), empty_style);
-        expected.set_style(Rect::new(99, 6, 1, 1), border_style);
- 
-        expected.set_style(Rect::new(0, 7, 1, 1), border_style);
-        expected.set_style(Rect::new(1, 7, 32, 1), empty_style);
-        expected.set_style(Rect::new(33, 7, 1, 1), vertical_line_style);
-        expected.set_style(Rect::new(34, 7, 2, 1), empty_style);
-        expected.set_style(Rect::new(36, 7, 9, 1), horizontal_line_style);
-        expected.set_style(Rect::new(45, 7, 20, 1), empty_style);
-        expected.set_style(Rect::new(65, 7, 1, 1), vertical_line_style);
-        expected.set_style(Rect::new(66, 7, 33, 1), empty_style);
-        expected.set_style(Rect::new(99, 7, 1, 1), border_style);
+        expected.set_style(Rect::new(0, 29, 100, 1), border_style);
+
+        // Monitor styles
+        // Top line y=2
+        expected.set_style(Rect::new(3, 2, 1, 1), vertical_line_style);
+        expected.set_style(Rect::new(4, 2, 91, 1), horizontal_line_style);
+        expected.set_style(Rect::new(95, 2, 1, 1), vertical_line_style);
+
+        // Sides y=3..26
+        expected.set_style(Rect::new(3, 3, 1, 24), vertical_line_style);
+        expected.set_style(Rect::new(95, 3, 1, 24), vertical_line_style);
         
-        expected.set_style(Rect::new(0, 8, 1, 15), border_style);
-        expected.set_style(Rect::new(1, 8, 32, 15), empty_style);
-        expected.set_style(Rect::new(33, 8, 1, 15), vertical_line_style);
-        expected.set_style(Rect::new(34, 8, 31, 15), empty_style);
-        expected.set_style(Rect::new(65, 8, 1, 15), vertical_line_style);
-        expected.set_style(Rect::new(66, 8, 33, 15), empty_style);
-        expected.set_style(Rect::new(99, 8, 1, 15), border_style);
- 
-        expected.set_style(Rect::new(0, 23, 1, 1), border_style);
-        expected.set_style(Rect::new(1, 23, 32, 1), empty_style);
-        expected.set_style(Rect::new(33, 23, 33, 1), horizontal_line_style);
-        expected.set_style(Rect::new(66, 23, 33, 1), empty_style);
-        expected.set_style(Rect::new(99, 23, 1, 1), border_style);       
+        // Bottom line y=27
+        expected.set_style(Rect::new(3, 27, 93, 1), horizontal_line_style);
 
-        expected.set_style(Rect::new(0, 24, 1, 5), border_style);
-        expected.set_style(Rect::new(1, 24, 98, 5), empty_style);
-        expected.set_style(Rect::new(99, 24, 1, 5), border_style);
-
-        expected.set_style(Rect::new(0,29, 100, 1), border_style);
+        // Text y=3
+        expected.set_style(Rect::new(9, 3, 9, 1), horizontal_line_style);
 
         assert_eq!(buf, expected);
     }

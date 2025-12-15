@@ -11,6 +11,7 @@ use crate::monitor::{Monitor,Position};
 
 use ratatui::layout::Constraint;
 use crate::utils::TUIMode;
+use crate::rotation::Rotation;
 use crate::App;
 
 #[derive(Debug)]
@@ -35,16 +36,24 @@ impl<'a> MonitorList<'a> {
 
     pub fn handle_events(app:&mut App, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('k')=> MonitorList::previous_monitor(app),
-            KeyCode::Char('j')=> MonitorList::next_monitor(app),
+            KeyCode::Char('k') | KeyCode::Up => MonitorList::previous_monitor(app),
+            KeyCode::Char('j') | KeyCode::Down => MonitorList::next_monitor(app),
             KeyCode::Char('e')=> MonitorList::enable_monitor(app),
             KeyCode::Char('d')=> MonitorList::disable_monitor(app),
             KeyCode::Char('m') => MonitorList::change_mode(app,TUIMode::Move),
             KeyCode::Char('r') => MonitorList::change_mode(app,TUIMode::Resolution),
             KeyCode::Char('s') => MonitorList::change_mode(app,TUIMode::Scale),
+            KeyCode::Char('o') => MonitorList::cycle_rotation(app),
             _ => {}
         }
     }
+    fn cycle_rotation(app:&mut App) {
+        let monitor = &mut app.monitors[app.selected_monitor];
+        let current_rotation = Rotation::from_transform(&monitor.transform);
+        let next_rotation = current_rotation.cycle();
+        monitor.transform = Some(next_rotation.to_transform().to_string());
+    }
+
     fn change_mode(app:&mut App,mode: TUIMode) {
         app.mode = mode;
     }
@@ -94,7 +103,9 @@ impl<'a> MonitorList<'a> {
                     None => "N/A".to_string(),
                 };
 
-                let mut mode = monitor.get_current_resolution(); 
+                let rotation = monitor.transform.clone().unwrap_or("normal".to_string());
+
+                let mut mode = monitor.get_current_resolution();
                 if mode.is_none() {
                     mode = monitor.get_prefered_resolution();
                 }
@@ -123,6 +134,7 @@ impl<'a> MonitorList<'a> {
                     Cell::from(resolution), 
                     Cell::from(position),
                     Cell::from(scale),
+                    Cell::from(rotation),
                 ])
             }
             )
@@ -146,6 +158,8 @@ impl<'a> MonitorList<'a> {
                 instructions_items.push("<r> ".blue().bold());
                 instructions_items.push(" Scale ".white());
                 instructions_items.push("<s> ".blue().bold());
+                instructions_items.push(" Rotate ".white());
+                instructions_items.push("<o> ".blue().bold());
                 if selected_monitor.enabled {
                     instructions_items.push(" Disable ".white());
                     instructions_items.push("<d> ".blue().bold());
@@ -210,9 +224,10 @@ impl<'a> MonitorList<'a> {
             
             Constraint::Percentage(5),
             Constraint::Percentage(15),
-            Constraint::Percentage(40),
-            Constraint::Percentage(20),
+            Constraint::Percentage(35),
             Constraint::Percentage(15),
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
             Constraint::Percentage(10),
         ];   
 
@@ -228,7 +243,9 @@ impl<'a> MonitorList<'a> {
                     Cell::from("description"),
                     Cell::from("resolution"),
                     Cell::from("position"),
-                    Cell::from("scale")])
+                    Cell::from("scale"),
+                    Cell::from("rotation")
+                ])
                     .bottom_margin(1)
                     .bold()
                     .green()
@@ -268,12 +285,12 @@ mod tests {
 
         let mut expected = Buffer::with_lines(vec![
             "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Displays ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓",
-            "┃     name              description                      resolution             position         scale      ┃",
+            "┃     name              description                     resolution        position   scale       rotation   ┃",
             "┃                                                                                                            ┃",
-            "┃     Monitor 1         Description 1                    1920x1080              (0,0)            1          ┃",
-            "┃     Monitor 2         Description 2                    1280x720               (1920,0)         1.25       ┃",
+            "┃     Monitor 1         Description 1                   1920x1080         (0,0)      1           normal     ┃",
+            "┃     Monitor 2         Description 2                   1280x720          (1920,0)   1.25        normal     ┃",
             "┃                                                                                                            ┃",
-            "┗━━━━━━━━━━ Up <k>  Down <j>  Move <m>  Resolution <r>  Scale <s>  Disable <d>  Save <w>  Quit <q> ━━━━━━━━━━┛",
+            "┗━━━━ Up <k>  Down <j>  Move <m>  Resolution <r>  Scale <s>  Rotate <o>  Disable <d>  Save <w>  Quit <q> ━━━━┛",
         ]);
 
         let border_style = Style::new().fg(Color::Yellow);
@@ -289,62 +306,56 @@ mod tests {
         // first line : title
         expected.set_style(Rect::new(0, 0, 50, 1), border_style);
         expected.set_style(Rect::new(50, 0, 10, 1), title_style);
-        expected.set_style(Rect::new(60, 0, 50, 1), border_style);       
+        expected.set_style(Rect::new(60, 0, 50, 1), border_style);
 
         // second line : header
         expected.set_style(Rect::new(0, 1, 1, 1), border_style);
         expected.set_style(Rect::new(1, 1, 108, 1), header_style);
         expected.set_style(Rect::new(109, 1, 1, 1), border_style);
-        
+
         // third line : empty
         expected.set_style(Rect::new(0, 2, 1, 1), border_style);
         expected.set_style(Rect::new(1, 2, 108, 1), empty_style);
         expected.set_style(Rect::new(109, 2, 1, 1), border_style);
-         
-        // fourth line : first row 
+
+        // fourth line : first row
         expected.set_style(Rect::new(0, 3, 1, 1), border_style);
         expected.set_style(Rect::new(1, 3, 5, 1), connected_style);
         expected.set_style(Rect::new(6, 3, 103, 1), row_style);
-        expected.set_style(Rect::new(109, 3, 1, 1), border_style);      
+        expected.set_style(Rect::new(109, 3, 1, 1), border_style);
 
-        // fifth line : second row 
+        // fifth line : second row
         expected.set_style(Rect::new(0, 4, 1, 1), border_style);
         expected.set_style(Rect::new(1, 4, 5, 1), disconnected_style);
         expected.set_style(Rect::new(6, 4, 103, 1), row_style);
-        expected.set_style(Rect::new(109, 4, 1, 1), border_style);   
-         
-        // fifth line : empty
+        expected.set_style(Rect::new(109, 4, 1, 1), border_style);
+
+        // sixth line : empty
         expected.set_style(Rect::new(0, 5, 1, 1), border_style);
         expected.set_style(Rect::new(1, 5, 108, 1), empty_style);
         expected.set_style(Rect::new(109, 5, 1, 1), border_style);
 
-        // last line : instructions 
-        expected.set_style(Rect::new(0,6,  11, 1), border_style);
-        expected.set_style(Rect::new(11, 6, 4, 1), instructions_label_style);
-        expected.set_style(Rect::new(15, 6, 4, 1), instructions_key_style);
-
-        expected.set_style(Rect::new(19,6, 6, 1), instructions_label_style);
-        expected.set_style(Rect::new(25,6, 4, 1), instructions_key_style);
-
-        expected.set_style(Rect::new(29,6, 6, 1), instructions_label_style);
-        expected.set_style(Rect::new(35,6, 4, 1), instructions_key_style);
-
-        expected.set_style(Rect::new(39,6, 12, 1), instructions_label_style);
-        expected.set_style(Rect::new(51,6, 4, 1), instructions_key_style);
-
-        expected.set_style(Rect::new(55,6, 7, 1), instructions_label_style);
-        expected.set_style(Rect::new(62,6, 4, 1), instructions_key_style);
-
-        expected.set_style(Rect::new(66,6, 9, 1), instructions_label_style);
-        expected.set_style(Rect::new(75,6, 4, 1), instructions_key_style);
-
-        expected.set_style(Rect::new(79,6, 6, 1), instructions_label_style);
-        expected.set_style(Rect::new(85,6, 4, 1), instructions_key_style);
-
-        expected.set_style(Rect::new(89,6, 6, 1), instructions_label_style);
-        expected.set_style(Rect::new(95,6, 4, 1), instructions_key_style);
-
-        expected.set_style(Rect::new(99,6, 11, 1), border_style);
+        // last line : instructions
+        expected.set_style(Rect::new(0, 6, 5, 1), border_style);
+        expected.set_style(Rect::new(5, 6, 4, 1), instructions_label_style);
+        expected.set_style(Rect::new(9, 6, 4, 1), instructions_key_style);
+        expected.set_style(Rect::new(13, 6, 6, 1), instructions_label_style);
+        expected.set_style(Rect::new(19, 6, 4, 1), instructions_key_style);
+        expected.set_style(Rect::new(23, 6, 6, 1), instructions_label_style);
+        expected.set_style(Rect::new(29, 6, 4, 1), instructions_key_style);
+        expected.set_style(Rect::new(33, 6, 12, 1), instructions_label_style);
+        expected.set_style(Rect::new(45, 6, 4, 1), instructions_key_style);
+        expected.set_style(Rect::new(49, 6, 7, 1), instructions_label_style);
+        expected.set_style(Rect::new(56, 6, 4, 1), instructions_key_style);
+        expected.set_style(Rect::new(60, 6, 8, 1), instructions_label_style);
+        expected.set_style(Rect::new(68, 6, 4, 1), instructions_key_style);
+        expected.set_style(Rect::new(72, 6, 9, 1), instructions_label_style);
+        expected.set_style(Rect::new(81, 6, 4, 1), instructions_key_style);
+        expected.set_style(Rect::new(85, 6, 6, 1), instructions_label_style);
+        expected.set_style(Rect::new(91, 6, 4, 1), instructions_key_style);
+        expected.set_style(Rect::new(95, 6, 6, 1), instructions_label_style);
+        expected.set_style(Rect::new(101, 6, 4, 1), instructions_key_style);
+        expected.set_style(Rect::new(105, 6, 5, 1), border_style);
 
         assert_eq!(buf, expected);
     }

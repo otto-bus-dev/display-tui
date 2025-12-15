@@ -29,8 +29,8 @@ impl Scale{
 
     pub fn handle_events(app:&mut App, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('k')=> Scale::previous(app),
-            KeyCode::Char('j')=> Scale::next(app),
+            KeyCode::Char('k') | KeyCode::Up => Scale::previous(app),
+            KeyCode::Char('j') | KeyCode::Down => Scale::next(app),
             KeyCode::Char(' ')=> Scale::select(app),
             KeyCode::Esc => Scale::change_mode(app,TUIMode::View),
             _ => {}

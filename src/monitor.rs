@@ -1,3 +1,4 @@
+use crate::rotation::Rotation;
 use serde::Deserialize;
 use std::process::Command;
 use std::io::Write;
@@ -10,6 +11,7 @@ pub struct Monitor {
     pub modes: Vec<Resolution>,
     pub position: Option<Position>,
     pub scale: Option<f32>,
+    pub transform: Option<String>,
 }
 
 
@@ -70,11 +72,18 @@ impl Monitor {
                 mode = monitor.get_prefered_resolution();
             }
 
+            let rotation = Rotation::from_transform(&monitor.transform);
+            let (width, height) = if rotation == Rotation::Deg90 || rotation == Rotation::Deg270 {
+                (mode.unwrap().height, mode.unwrap().width)
+            } else {
+                (mode.unwrap().width, mode.unwrap().height)
+            };
+
             let monitor_left = monitor.position.clone().unwrap().x as f64;
-            let monitor_right = monitor_left  + (mode.unwrap().width as f64 / monitor.scale.unwrap() as f64);
+            let monitor_right = monitor_left  + (width as f64 / monitor.scale.unwrap() as f64);
 
             let monitor_bottom = monitor.position.clone().unwrap().y as f64;
-            let monitor_top = monitor_bottom + (mode.unwrap().height as f64 / monitor.scale.unwrap() as f64);
+            let monitor_top = monitor_bottom + (height as f64 / monitor.scale.unwrap() as f64);
             
             if monitor_right > right {
                 right= monitor_right;
@@ -96,20 +105,9 @@ impl Monitor {
         bottom -= margin;
         right += margin;
         top += margin;
-        let width = right - left;
-        let height = top - bottom;
- 
-        let area_ratio = area.width as f64 / area.height as f64;
-        let canvas_ratio = width / height;
-        let canvas_area_ratio = canvas_ratio / area_ratio;
-            
-        let height = top - bottom;
-        let added_height =  height * canvas_area_ratio  / 2.0;
-        let y_bounds = [bottom - added_height, top + added_height];
 
-        let width = right- left;
-        let added_width =  width / canvas_area_ratio  / 2.0;
-        let x_bounds = [left - added_width, right + added_width];
+        let x_bounds = [left, right];
+        let y_bounds = [bottom, top];
 
         let mut offset_y = 0.0;
         if bottom < 0.0 {
@@ -156,12 +154,14 @@ impl Monitor {
             }
         };
         if self.enabled {
+            let rotation = Rotation::from_transform(&self.transform);
             format!(
-                "monitor = {}, {}x{}@{}, {}x{}, {}",
+                "monitor = {}, {}x{}@{}, {}x{}, {}, transform,{}",
                 self.name,
                 mode.width, mode.height, mode.refresh,
                 self.position.clone().unwrap().x, self.position.clone().unwrap().y,
-                self.scale.unwrap_or(1.0)
+                self.scale.unwrap_or(1.0),
+                rotation.to_hyprland()
             )
         } else {
             format!(
@@ -191,5 +191,29 @@ impl Monitor {
 
     pub fn move_horizontal(&mut self, direction: i32) {
         if let Some(ref mut pos) = self.position { pos.x += direction};
+    }
+
+    pub fn get_geometry(&self) -> (f64, f64, f64, f64) {
+        let mut mode = self.get_current_resolution();
+        if mode.is_none() {
+            mode = self.get_prefered_resolution();
+        }
+        
+        if mode.is_none() { return (0.0,0.0,0.0,0.0); }
+
+        let rotation = Rotation::from_transform(&self.transform);
+        let (width, height) = if rotation == Rotation::Deg90 || rotation == Rotation::Deg270 {
+            (mode.unwrap().height, mode.unwrap().width)
+        } else {
+            (mode.unwrap().width, mode.unwrap().height)
+        };
+
+        let scale = self.scale.unwrap_or(1.0);
+        let logical_width = width as f64 / scale as f64;
+        let logical_height = height as f64 / scale as f64;
+        let x = self.position.clone().unwrap().x as f64;
+        let y = self.position.clone().unwrap().y as f64;
+
+        (x, y, logical_width, logical_height)
     }
 }
