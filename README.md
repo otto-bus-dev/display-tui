@@ -29,7 +29,7 @@ Built with Rust and the `crossterm` and `ratatui` libraries, it provides a user-
 1. Clone the repository and build the project:
 
    ```bash
-   git clone https://github.com/otto-bus-dev/display-tui.git
+   git clone https://github.com/Henriklmao/display-tui.git
    cd display-tui
    cargo build --release
    sudo cp target/release/display-tui /usr/local/bin/ # or your preferred location
@@ -49,7 +49,7 @@ Built with Rust and the `crossterm` and `ratatui` libraries, it provides a user-
    You need to add the following line to your Hyprland config file (usually located at `~/.config/hypr/hyprland.conf`):
 
    ```bash
-   source ~/.config/hypr/hyprland/monitors.conf
+   source ~/.config/hypr/monitors.conf
    ```
 
    Here we have the default path, if you changed the `monitors_config_path` in the configuration file, you need to change it here too.

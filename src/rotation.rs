@@ -35,7 +35,7 @@ impl Rotation {
 
     pub fn to_hyprland(&self) -> String {
         match self {
-            Rotation::Normal => "transform, 0".to_string(),
+            Rotation::Normal => "".to_string(),
             Rotation::Deg90 => "transform, 1".to_string(),
             Rotation::Deg180 => "transform, 2".to_string(),
             Rotation::Deg270 => "transform, 3".to_string(),
