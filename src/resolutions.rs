@@ -31,8 +31,8 @@ impl<'a> Resolutions<'a> {
  
     pub fn handle_events(app:&mut App, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('k')=> Resolutions::previous(app),
-            KeyCode::Char('j')=> Resolutions::next(app),
+            KeyCode::Char('k') | KeyCode::Up => Resolutions::previous(app),
+            KeyCode::Char('j') | KeyCode::Down => Resolutions::next(app),
             KeyCode::Char(' ')=> Resolutions::select(app),
             KeyCode::Esc => Resolutions::change_mode(app,TUIMode::View),
             _ => {}

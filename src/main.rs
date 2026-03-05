@@ -10,6 +10,7 @@ use ratatui::prelude::*;
 mod list;
 mod map;
 mod monitor;
+mod rotation;
 mod resolutions;
 mod utils;
 mod scale;
@@ -46,6 +47,21 @@ struct App {
 impl App{
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         self.monitors = Monitor::get_monitors();
+        
+        // Load saved monitor positions/scales
+        if let Some(saved_states) = Configuration::load_monitor_state() {
+            for monitor in &mut self.monitors {
+                if let Some(saved_state) = saved_states.iter().find(|s| s.name == monitor.name) {
+                    if let Some(pos) = &saved_state.position {
+                        monitor.position = Some(pos.clone());
+                    }
+                    if let Some(scale) = saved_state.scale {
+                        monitor.scale = Some(scale);
+                    }
+                }
+            }
+        }
+        
         self.selected_resolution= 0;
         self.selected_monitor= 0;
         self.config = Configuration::get();
@@ -87,6 +103,10 @@ impl App{
     }
     
     fn exit(&mut self) {
+        // Save monitor state before exiting
+        if let Err(e) = Configuration::save_monitor_state(&self.monitors) {
+            eprintln!("Warning: Failed to save monitor state on exit: {}", e);
+        }
         self.exit = true;
     }
     
@@ -95,6 +115,11 @@ impl App{
             &self.config.monitors_config_path,
             &self.monitors
         ).expect("Failed to save Hyprland config");
+        
+        match Configuration::save_monitor_state(&self.monitors) {
+            Ok(_) => eprintln!("✓ Monitor state saved successfully"),
+            Err(e) => eprintln!("✗ Failed to save monitor state: {}", e),
+        }
     }         
 }
 
@@ -218,19 +243,23 @@ mod tests {
         app.handle_key_event(KeyCode::Char('m').into());
         assert_eq!(app.mode, TUIMode::Move);
 
-        app.handle_key_event(KeyCode::Char('k').into());
+        // K (Shift+k) moves -10
+        app.handle_key_event(KeyCode::Char('K').into());
         let monitor = app.monitors[app.selected_monitor].clone();
         assert_eq!(monitor.position.unwrap().y, -10);
 
-        app.handle_key_event(KeyCode::Char('j').into());
+        // J (Shift+j) moves +10
+        app.handle_key_event(KeyCode::Char('J').into());
         let monitor = app.monitors[app.selected_monitor].clone();
         assert_eq!(monitor.position.unwrap().y, 0);
 
-        app.handle_key_event(KeyCode::Char('h').into());
+        // H moves -10
+        app.handle_key_event(KeyCode::Char('H').into());
         let monitor = app.monitors[app.selected_monitor].clone();
         assert_eq!(monitor.position.unwrap().x, -10);
 
-        app.handle_key_event(KeyCode::Char('l').into());
+        // L moves +10
+        app.handle_key_event(KeyCode::Char('L').into());
         let monitor = app.monitors[app.selected_monitor].clone();
         assert_eq!(monitor.position.unwrap().x, 0);
 
@@ -294,4 +323,132 @@ mod tests {
 
         Ok(())
     }       
+    #[test]
+    fn handle_mode_view_arrow_key_event() -> io::Result<()> {
+        let mut app = App{
+            monitors: test_monitors(),
+            selected_monitor: 0,
+            ..Default::default()
+        };
+
+        app.handle_key_event(KeyCode::Up.into());
+        assert_eq!(app.selected_monitor, 1);
+
+        app.handle_key_event(KeyCode::Down.into());
+        assert_eq!(app.selected_monitor, 0);
+
+        app.handle_key_event(KeyCode::Down.into());
+        assert_eq!(app.selected_monitor, app.monitors.len() - 1);
+
+        app.handle_key_event(KeyCode::Up.into());
+        assert_eq!(app.selected_monitor, 0);
+        
+        Ok(())
+    }
+
+    #[test]
+    fn handle_mode_move_arrow_key_event() -> io::Result<()> {
+        let mut app = App{
+            monitors: test_monitors(),
+            selected_monitor: 0,
+            ..Default::default()
+        };
+ 
+        app.handle_key_event(KeyCode::Char('m').into());
+        assert_eq!(app.mode, TUIMode::Move);
+
+        // Shift+Up moves -10
+        app.handle_key_event(KeyEvent{
+            code: KeyCode::Up,
+            modifiers: KeyModifiers::SHIFT,
+            kind: KeyEventKind::Press,
+            state: event::KeyEventState::empty(),
+        });
+        let monitor = app.monitors[app.selected_monitor].clone();
+        assert_eq!(monitor.position.unwrap().y, -10);
+
+        // Shift+Down moves +10
+        app.handle_key_event(KeyEvent{
+             code: KeyCode::Down,
+             modifiers: KeyModifiers::SHIFT,
+             kind: KeyEventKind::Press,
+             state: event::KeyEventState::empty(),
+        });
+        let monitor = app.monitors[app.selected_monitor].clone();
+        assert_eq!(monitor.position.unwrap().y, 0);
+
+        // Shift+Left moves -10
+        app.handle_key_event(KeyEvent{
+             code: KeyCode::Left,
+             modifiers: KeyModifiers::SHIFT,
+             kind: KeyEventKind::Press,
+             state: event::KeyEventState::empty(),
+        });
+        let monitor = app.monitors[app.selected_monitor].clone();
+        assert_eq!(monitor.position.unwrap().x, -10);
+
+        // Shift+Right moves +10
+        app.handle_key_event(KeyEvent{
+             code: KeyCode::Right,
+             modifiers: KeyModifiers::SHIFT,
+             kind: KeyEventKind::Press,
+             state: event::KeyEventState::empty(),
+        });
+        let monitor = app.monitors[app.selected_monitor].clone();
+        assert_eq!(monitor.position.unwrap().x, 0);
+
+
+        // Snap Test
+        // Move to 100
+        app.monitors[app.selected_monitor].position.as_mut().unwrap().y = 100;
+        
+        // Up (no shift) should snap to 0 (which is a generic target for all monitors)
+        app.handle_key_event(KeyCode::Up.into());
+        let monitor = app.monitors[app.selected_monitor].clone();
+        assert_eq!(monitor.position.unwrap().y, 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn handle_mode_resolution_arrow_key_event() -> io::Result<()> {
+        let mut app = App{
+            monitors: test_monitors(),
+            selected_monitor: 0,
+            ..Default::default()
+        };
+
+        app.handle_key_event(KeyCode::Char('r').into());
+        assert_eq!(app.mode, TUIMode::Resolution);
+
+        app.selected_resolution = 0;
+        app.handle_key_event(KeyCode::Down.into());
+        assert_eq!(app.selected_resolution, 1);
+
+        app.handle_key_event(KeyCode::Up.into());
+        assert_eq!(app.selected_resolution, 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn handle_mode_scale_arrow_key_event() -> io::Result<()> {
+        let mut app = App{
+            monitors: test_monitors(),
+            selected_monitor: 0,
+            ..Default::default()
+        };
+
+        app.handle_key_event(KeyCode::Char('s').into());
+        assert_eq!(app.mode, TUIMode::Scale);
+
+        app.selected_scale = 0;
+        app.handle_key_event(KeyCode::Down.into());
+        assert_eq!(app.selected_scale, 1);
+
+        app.handle_key_event(KeyCode::Up.into());
+        assert_eq!(app.selected_scale, 0);
+
+        Ok(())
+    }
 }

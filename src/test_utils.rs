@@ -16,6 +16,9 @@ pub mod tests {
                 ],
                 position: Some(Position { x: 0, y: 0 }),
                 scale: Some(1.0),
+                transform: None,
+                saved_position: None,
+                saved_scale: None,
             },
             Monitor {
                 name: "Monitor 2".to_string(),
@@ -30,6 +33,9 @@ pub mod tests {
                 ],
                 position: Some(Position { x: 1920, y: 0 }),
                 scale: Some(1.25),
+                transform: None,
+                saved_position: None,
+                saved_scale: None,
             },
         ]
     }
