@@ -116,9 +116,8 @@ impl App{
             &self.monitors
         ).expect("Failed to save Hyprland config");
         
-        match Configuration::save_monitor_state(&self.monitors) {
-            Ok(_) => eprintln!("✓ Monitor state saved successfully"),
-            Err(e) => eprintln!("✗ Failed to save monitor state: {}", e),
+        if let Err(e) = Configuration::save_monitor_state(&self.monitors) {
+            eprintln!("✗ Failed to save monitor state: {}", e);
         }
     }         
 }

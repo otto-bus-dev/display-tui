@@ -161,10 +161,8 @@ impl Monitor {
         if self.enabled {
             let rotation = Rotation::from_transform(&self.transform);
             format!(
-                "monitor = desc:{} {} {}, {}x{}@{}, {}x{}, {}",
-                self.make.as_deref().unwrap_or(""),
-                self.model.as_deref().unwrap_or(""),
-                self.serial.as_deref().unwrap_or(""),
+                "monitor = {}, {}x{}@{}, {}x{}, {}, {}",
+                self.name,
                 mode.width, mode.height, mode.refresh,
                 self.position.clone().unwrap().x, self.position.clone().unwrap().y,
                 self.scale.unwrap_or(1.0),
