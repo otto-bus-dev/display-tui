@@ -7,6 +7,9 @@ use ratatui::layout::Rect;
 pub struct Monitor {
     pub name: String,
     pub description: Option<String>,
+    pub make: Option<String>,
+    pub model: Option<String>,
+    pub serial: Option<String>,
     pub enabled: bool,
     pub modes: Vec<Resolution>,
     pub position: Option<Position>,
@@ -158,8 +161,10 @@ impl Monitor {
         if self.enabled {
             let rotation = Rotation::from_transform(&self.transform);
             format!(
-                "monitor = {}, {}x{}@{}, {}x{}, {}, transform,{}",
-                self.name,
+                "monitor = desc:{} {} {}, {}x{}@{}, {}x{}, {}",
+                self.make.as_deref().unwrap_or(""),
+                self.model.as_deref().unwrap_or(""),
+                self.serial.as_deref().unwrap_or(""),
                 mode.width, mode.height, mode.refresh,
                 self.position.clone().unwrap().x, self.position.clone().unwrap().y,
                 self.scale.unwrap_or(1.0),

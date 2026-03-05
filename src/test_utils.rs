@@ -6,6 +6,9 @@ pub mod tests {
             Monitor {
                 name: "Monitor 1".to_string(),
                 description: Some("Description 1".to_string()),
+                make:Some("Some".to_string()),
+                model:Some("Description".to_string()),
+                serial:Some("1".to_string()),
                 enabled: true,
                 modes: vec![
                     Resolution { width: 1920, height: 1080, refresh:60.0, preferred: true ,current: true},
@@ -20,6 +23,9 @@ pub mod tests {
             Monitor {
                 name: "Monitor 2".to_string(),
                 description: Some("Description 2".to_string()),
+                make:Some("Some".to_string()),
+                model:Some("Description".to_string()),
+                serial:Some("2".to_string()),
                 enabled: false,
                 modes: vec![
                     Resolution { width: 1920, height: 1080 , refresh:60.0, preferred: false, current: false },
